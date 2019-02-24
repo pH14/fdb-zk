@@ -7,15 +7,16 @@ import org.apache.zookeeper.proto.ExistsRequest;
 import org.apache.zookeeper.proto.ExistsResponse;
 import org.apache.zookeeper.proto.GetDataRequest;
 import org.apache.zookeeper.proto.GetDataResponse;
+import org.apache.zookeeper.server.Request;
 
 import com.hubspot.algebra.Result;
 
 public interface FdbZooKeeperLayer {
 
-  Result<ExistsResponse, KeeperException> exists(ExistsRequest existsRequest);
+  Result<ExistsResponse, KeeperException> exists(Request zkRequest, ExistsRequest existsRequest);
 
-  Result<CreateResponse, KeeperException> create(CreateRequest createRequest);
+  Result<CreateResponse, KeeperException> create(Request zkRequest, CreateRequest createRequest);
 
-  Result<GetDataResponse, KeeperException> getData(GetDataRequest getDataRequest);
+  Result<GetDataResponse, KeeperException> getData(Request zkRequest, GetDataRequest getDataRequest);
 
 }

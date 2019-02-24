@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Collections;
 
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.CreateResponse;
@@ -22,13 +23,20 @@ public class FdbGetDataTest extends FdbBaseTest {
   public void itGetsDataFromExistingNode() {
     String data = Strings.repeat("this is the song that never ends ", 10000);
 
-    Result<CreateResponse, KeeperException> result = new FdbCreate(transaction, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0)).execute();
+    Result<CreateResponse, KeeperException> result = new FdbCreate(REQUEST, transaction, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0)).execute();
     assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
-    Result<GetDataResponse, KeeperException> result2 = new FdbGetData(transaction, new GetDataRequest(BASE_PATH, false)).execute();
+    Result<GetDataResponse, KeeperException> result2 = new FdbGetData(REQUEST, transaction, new GetDataRequest(BASE_PATH, false)).execute();
     assertThat(result2.isOk()).isTrue();
     assertThat(result2.unwrapOrElseThrow()).isEqualTo(new GetDataResponse(data.getBytes(), new Stat()));
+  }
+
+  @Test
+  public void itReturnsErrorIfNodeDoesNotExist() {
+    Result<GetDataResponse, KeeperException> exists = new FdbGetData(REQUEST, transaction, new GetDataRequest(BASE_PATH, false)).execute();
+    assertThat(exists.isOk()).isFalse();
+    assertThat(exists.unwrapErrOrElseThrow().code()).isEqualTo(Code.NONODE);
   }
 
 }

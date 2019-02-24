@@ -81,7 +81,7 @@ public class FdbRequestProcessor implements RequestProcessor {
           ByteBufferInputStream.byteBuffer2Record(request.request, create2Request);
           request.request.clear();
 
-          result = fdbZooKeeper.create(create2Request);
+          result = fdbZooKeeper.create(request, create2Request);
 
           LOG.debug("Handling create request: {}", create2Request);
           break;
@@ -124,7 +124,7 @@ public class FdbRequestProcessor implements RequestProcessor {
           GetDataRequest getDataRequest = new GetDataRequest();
           ByteBufferInputStream.byteBuffer2Record(request.request, getDataRequest);
 
-          result = fdbZooKeeper.getData(getDataRequest);
+          result = fdbZooKeeper.getData(request, getDataRequest);
           break;
         case OpCode.getACL:
         case OpCode.getChildren:

@@ -8,6 +8,7 @@ import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.data.StatPersisted;
 import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.CreateResponse;
+import org.apache.zookeeper.server.Request;
 
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectoryAlreadyExistsException;
@@ -21,8 +22,8 @@ public class FdbCreate extends BaseFdbOp<CreateRequest, CreateResponse> {
 
   // TODO: Write a Stat into the value
 
-  public FdbCreate(Transaction transaction, CreateRequest request) {
-    super(transaction, request);
+  public FdbCreate(Request rawRequest, Transaction transaction, CreateRequest request) {
+    super(rawRequest, transaction, request);
   }
 
   @Override

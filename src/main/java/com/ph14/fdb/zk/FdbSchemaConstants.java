@@ -9,4 +9,9 @@ public class FdbSchemaConstants {
   public static final byte[] ACL_KEY = "a".getBytes();
   public static final byte[] STAT_KEY = "s".getBytes();
 
+  public static final byte[] NODE_CREATED_WATCH_KEY = "w".getBytes();
+  public static final byte[] CHILD_CREATED_WATCH_KEY = "c".getBytes();
+  public static final byte[] NODE_DATA_UPDATED_KEY = "u".getBytes();
+
+  public static final byte[] EMPTY_BYTES = new byte[0];
 }

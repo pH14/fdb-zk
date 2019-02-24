@@ -1,6 +1,7 @@
 package com.ph14.fdb.zk.layer;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.zookeeper.data.ACL;
@@ -31,6 +32,10 @@ public class FdbNodeReader {
 
   public FdbNode deserialize(Transaction transaction) {
     return deserialize(transaction.getRange(nodeSubspace.range()).asList().join());
+  }
+
+  public FdbNode deserialize(byte[] key, byte[] value) {
+    return deserialize(Collections.singletonList(new KeyValue(key, value)));
   }
 
   public FdbNode deserialize(List<KeyValue> keyValues) {

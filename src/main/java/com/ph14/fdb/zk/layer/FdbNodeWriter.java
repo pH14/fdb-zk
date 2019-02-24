@@ -30,7 +30,15 @@ public class FdbNodeWriter {
   }
 
   public Iterable<KeyValue> serialize(FdbNode fdbNode) {
-    int dataLength = fdbNode.getData().length;
+    return Iterables.concat(
+        getDataKeyValues(fdbNode.getData()),
+        getStatKeyValues(fdbNode.getStat()),
+        getAclKeyValues(fdbNode.getAcls()),
+        getWatchKeys());
+  }
+
+  public List<KeyValue> getDataKeyValues(byte[] data) {
+    int dataLength = data.length;
 
     if (dataLength > FdbSchemaConstants.ZK_MAX_DATA_LENGTH) {
       // this is the actual ZK error. it uses jute.maxBuffer + 1024
@@ -38,14 +46,6 @@ public class FdbNodeWriter {
     }
 
     Preconditions.checkArgument(dataLength < FdbSchemaConstants.ZK_MAX_DATA_LENGTH, "node data too large, was: " + dataLength);
-
-    return Iterables.concat(
-        getDataKeyValues(fdbNode.getData()),
-        getStatKeyValues(fdbNode.getStat()),
-        getAclKeyValues(fdbNode.getAcls()));
-  }
-
-  private List<KeyValue> getDataKeyValues(byte[] data) {
     List<byte[]> dataBlocks = ByteUtil.divideByteArray(data, FdbSchemaConstants.FDB_MAX_VALUE_SIZE);
 
     ImmutableList.Builder<KeyValue> keyValues = ImmutableList.builder();
@@ -98,6 +98,13 @@ public class FdbNodeWriter {
     }
 
     return keyValues.build();
+  }
+
+  private List<KeyValue> getWatchKeys() {
+    return ImmutableList.of(
+        new KeyValue(nodeSubspace.get(FdbSchemaConstants.NODE_CREATED_WATCH_KEY).pack(), FdbSchemaConstants.EMPTY_BYTES),
+        new KeyValue(nodeSubspace.get(FdbSchemaConstants.CHILD_CREATED_WATCH_KEY).pack(), FdbSchemaConstants.EMPTY_BYTES)
+    );
   }
 
 }
