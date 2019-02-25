@@ -43,10 +43,7 @@ public class FdbExists implements BaseFdbOp<ExistsRequest, ExistsResponse> {
 
       FdbNode fdbNode = fdbNodeReader.deserialize(subspace, transaction.getRange(statKeyRange).asList().join());
 
-      Stat stat = new Stat();
-      copyStat(fdbNode.getStat(), stat);
-
-      return Result.ok(new ExistsResponse(stat));
+      return Result.ok(new ExistsResponse(fdbNode.getStat()));
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
         return Result.err(new NoNodeException(request.getPath()));
@@ -55,31 +52,5 @@ public class FdbExists implements BaseFdbOp<ExistsRequest, ExistsResponse> {
       }
     }
   }
-
-  public void copyStat(Stat stat, Stat to) {
-    to.setAversion(stat.getAversion());
-    to.setCtime(stat.getCtime());
-    to.setCzxid(stat.getCzxid());
-    to.setMtime(stat.getMtime());
-    to.setMzxid(stat.getMzxid());
-    to.setPzxid(stat.getPzxid());
-    to.setVersion(stat.getVersion());
-    to.setCversion(stat.getCversion());
-    to.setAversion(stat.getAversion());
-    to.setEphemeralOwner(stat.getEphemeralOwner());
-    to.setDataLength(stat.getDataLength());
-    // TODO: What does this look like
-    //    to.setDataLength(data == null ? 0 : data.length);
-    //    int numChildren = 0;
-    //    if (this.children != null) {
-    //      numChildren = children.size();
-    //    }
-    //    // when we do the Cversion we need to translate from the count of the creates
-    //    // to the count of the changes (v3 semantics)
-    //    // for every create there is a delete except for the children still present
-    //    to.setCversion(stat.getCversion()*2 - numChildren);
-    //    to.setNumChildren(numChildren);
-  }
-
 
 }

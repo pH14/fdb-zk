@@ -12,6 +12,14 @@ import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectorySubspace;
 import com.ph14.fdb.zk.FdbSchemaConstants;
 
+/**
+ * GetData -- sets watch for data changes or node deletion
+ * Exists -- if doesn't exist, set watch for node creation. if does exist, set watch for deletion or getData
+ *
+ * For these we'll want to register multiple watches (and for creation, we want the path directly w/o directory layer
+ * since we don't know which prefix we'll get yet), and when the first one fires, removes all of the client's watches
+ * for that particular path
+ */
 public class FdbWatchManager {
 
   public void addNodeCreatedWatch(Transaction transaction, DirectorySubspace nodeSubspace, Watcher watcher) {

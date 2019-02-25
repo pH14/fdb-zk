@@ -39,9 +39,9 @@ public class FdbNodeReader {
   public FdbNode deserialize(DirectorySubspace nodeSubspace, List<KeyValue> keyValues) {
     ListMultimap<byte[], KeyValue> keyValuesByPrefix = ArrayListMultimap.create();
 
-    byte[] dataPrefix = nodeSubspace.get(FdbSchemaConstants.DATA_KEY).pack();
-    byte[] aclPrefix = nodeSubspace.get(FdbSchemaConstants.ACL_KEY).pack();
     byte[] statPrefix = nodeSubspace.get(FdbSchemaConstants.STAT_KEY).pack();
+    byte[] aclPrefix = nodeSubspace.get(FdbSchemaConstants.ACL_KEY).pack();
+    byte[] dataPrefix = nodeSubspace.get(FdbSchemaConstants.DATA_KEY).pack();
 
     for (KeyValue keyValue : keyValues) {
       if (ByteArrayUtil.startsWith(keyValue.getKey(), statPrefix)) {

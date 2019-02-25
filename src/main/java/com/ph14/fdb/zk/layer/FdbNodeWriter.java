@@ -65,7 +65,7 @@ public class FdbNodeWriter {
 
   private Iterable<KeyValue> getStatKeyValues(Subspace nodeSubspace, FdbNode fdbNode) {
     if (fdbNode.getStat() != null) {
-      return fdbNodeStatWriter.getStatKeyValuesFromFdbNode(nodeSubspace, fdbNode);
+      return fdbNodeStatWriter.getNodeCreationKeyValuesFromExistingStat(nodeSubspace, fdbNode);
     }
 
     return fdbNodeStatWriter.getNodeCreationKeyValues(nodeSubspace, fdbNode.getData(), Optional.empty());

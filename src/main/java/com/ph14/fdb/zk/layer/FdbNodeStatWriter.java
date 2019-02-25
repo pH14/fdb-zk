@@ -42,7 +42,7 @@ public class FdbNodeStatWriter {
   }
 
   @VisibleForTesting
-  Iterable<KeyValue> getStatKeyValuesFromFdbNode(Subspace nodeSubspace, FdbNode fdbNode) {
+  Iterable<KeyValue> getNodeCreationKeyValuesFromExistingStat(Subspace nodeSubspace, FdbNode fdbNode) {
     Subspace nodeStatSubspace = nodeSubspace.get(FdbSchemaConstants.STAT_KEY);
 
     return ImmutableList.of(
