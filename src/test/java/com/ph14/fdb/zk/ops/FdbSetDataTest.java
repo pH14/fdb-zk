@@ -28,36 +28,36 @@ public class FdbSetDataTest extends FdbBaseTest {
   public void itSetsDataForExistingNode() {
     String data = Strings.repeat("this is the song that never ends ", 10000);
 
-    Result<CreateResponse, KeeperException> result = new FdbCreate(REQUEST, transaction, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0)).execute();
+    Result<CreateResponse, KeeperException> result = fdbCreate.execute(REQUEST, transaction, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0));
     assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     data = "this is something else";
-    Result<SetDataResponse, KeeperException> result2 = new FdbSetData(REQUEST, transaction, new SetDataRequest(BASE_PATH, data.getBytes(), 1)).execute();
+    Result<SetDataResponse, KeeperException> result2 = fdbSetData.execute(REQUEST, transaction, new SetDataRequest(BASE_PATH, data.getBytes(), 1));
     assertThat(result2.isOk()).isTrue();
     assertThat(result2.unwrapOrElseThrow()).isEqualTo(new SetDataResponse(new Stat()));
   }
 
   @Test
   public void itReturnsErrorIfNodeDoesNotExist() {
-    Result<SetDataResponse, KeeperException> exists = new FdbSetData(REQUEST, transaction, new SetDataRequest(BASE_PATH, "hello".getBytes(), 1)).execute();
+    Result<SetDataResponse, KeeperException> exists = fdbSetData.execute(REQUEST, transaction, new SetDataRequest(BASE_PATH, "hello".getBytes(), 1));
     assertThat(exists.isOk()).isFalse();
     assertThat(exists.unwrapErrOrElseThrow().code()).isEqualTo(Code.NONODE);
   }
 
   @Test
-  public void itTriggersWatchForDataChanged() throws InterruptedException {
-    Result<CreateResponse, KeeperException> result = new FdbCreate(REQUEST, transaction, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0)).execute();
+  public void itTriggersWatchForDataChange() throws InterruptedException {
+    Result<CreateResponse, KeeperException> result = fdbCreate.execute(REQUEST, transaction, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0));
     assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
-    Result<GetDataResponse, KeeperException> result2 = new FdbGetData(REQUEST, transaction, new GetDataRequest(BASE_PATH, true)).execute();
+    Result<GetDataResponse, KeeperException> result2 = fdbGetData.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, true));
     assertThat(result2.isOk()).isTrue();
 
     transaction.commit().join();
     transaction = fdb.createTransaction();
 
-    Result<SetDataResponse, KeeperException> exists = new FdbSetData(REQUEST, transaction, new SetDataRequest(BASE_PATH, "hello!".getBytes(), 1)).execute();
+    Result<SetDataResponse, KeeperException> exists = fdbSetData.execute(REQUEST, transaction, new SetDataRequest(BASE_PATH, "hello!".getBytes(), 1));
     assertThat(exists.isOk()).isTrue();
     assertThat(SERVER_CNXN.getWatchedEvents().peek()).isNull();
 

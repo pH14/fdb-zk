@@ -2,20 +2,21 @@ package com.ph14.fdb.zk.layer;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.StatPersisted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.apple.foundationdb.KeyValue;
-import com.apple.foundationdb.directory.DirectorySubspace;
+import com.apple.foundationdb.subspace.Subspace;
 import com.apple.foundationdb.tuple.Tuple;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
+import com.google.inject.Inject;
 import com.ph14.fdb.zk.ByteUtil;
 import com.ph14.fdb.zk.FdbSchemaConstants;
 
@@ -23,21 +24,22 @@ public class FdbNodeWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(FdbNodeWriter.class);
 
-  private final DirectorySubspace nodeSubspace;
+  private final FdbNodeStatWriter fdbNodeStatWriter;
 
-  public FdbNodeWriter(DirectorySubspace nodeSubspace) {
-    this.nodeSubspace = nodeSubspace;
+  @Inject
+  public FdbNodeWriter(FdbNodeStatWriter fdbNodeStatWriter) {
+    this.fdbNodeStatWriter = fdbNodeStatWriter;
   }
 
-  public Iterable<KeyValue> serialize(FdbNode fdbNode) {
+  public Iterable<KeyValue> createNewNode(Subspace nodeSubspace, FdbNode fdbNode) {
     return Iterables.concat(
-        getDataKeyValues(fdbNode.getData()),
-        getStatKeyValues(fdbNode.getStat()),
-        getAclKeyValues(fdbNode.getAcls()),
-        getWatchKeys());
+        getDataKeyValues(nodeSubspace, fdbNode.getData()),
+        getStatKeyValues(nodeSubspace, fdbNode),
+        getAclKeyValues(nodeSubspace, fdbNode.getAcls()),
+        getWatchKeys(nodeSubspace));
   }
 
-  public List<KeyValue> getDataKeyValues(byte[] data) {
+  public List<KeyValue> getDataKeyValues(Subspace nodeSubspace, byte[] data) {
     int dataLength = data.length;
 
     if (dataLength > FdbSchemaConstants.ZK_MAX_DATA_LENGTH) {
@@ -61,25 +63,15 @@ public class FdbNodeWriter {
     return keyValues.build();
   }
 
-  private List<KeyValue> getStatKeyValues(StatPersisted stat) {
-    ByteArrayDataOutput dataOutput = ByteStreams.newDataOutput();
-
-    try {
-      stat.write(dataOutput);
-
-      return ImmutableList.of(
-          new KeyValue(
-              nodeSubspace.pack(FdbSchemaConstants.STAT_KEY),
-              dataOutput.toByteArray())
-      );
-    } catch (IOException e) {
-      LOG.error("Not ideal", e);
+  private Iterable<KeyValue> getStatKeyValues(Subspace nodeSubspace, FdbNode fdbNode) {
+    if (fdbNode.getStat() != null) {
+      return fdbNodeStatWriter.getStatKeyValuesFromFdbNode(nodeSubspace, fdbNode);
     }
 
-    return ImmutableList.of();
+    return fdbNodeStatWriter.getNodeCreationKeyValues(nodeSubspace, fdbNode.getData(), Optional.empty());
   }
 
-  private List<KeyValue> getAclKeyValues(List<ACL> acls) {
+  private List<KeyValue> getAclKeyValues(Subspace nodeSubspace, List<ACL> acls) {
     ImmutableList.Builder<KeyValue> keyValues = ImmutableList.builder();
 
     for (int i = 0; i < acls.size(); i++) {
@@ -100,7 +92,7 @@ public class FdbNodeWriter {
     return keyValues.build();
   }
 
-  private List<KeyValue> getWatchKeys() {
+  private List<KeyValue> getWatchKeys(Subspace nodeSubspace) {
     return ImmutableList.of(
         new KeyValue(nodeSubspace.get(FdbSchemaConstants.NODE_CREATED_WATCH_KEY).pack(), FdbSchemaConstants.EMPTY_BYTES),
         new KeyValue(nodeSubspace.get(FdbSchemaConstants.CHILD_CREATED_WATCH_KEY).pack(), FdbSchemaConstants.EMPTY_BYTES)

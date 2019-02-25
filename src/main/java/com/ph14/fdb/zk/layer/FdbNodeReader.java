@@ -1,44 +1,42 @@
 package com.ph14.fdb.zk.layer;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.StatPersisted;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.apple.foundationdb.KeyValue;
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectorySubspace;
+import com.apple.foundationdb.subspace.Subspace;
 import com.apple.foundationdb.tuple.ByteArrayUtil;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 import com.google.common.io.ByteStreams;
+import com.google.inject.Inject;
 import com.ph14.fdb.zk.FdbSchemaConstants;
 
 public class FdbNodeReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(FdbNodeReader.class);
 
-  private final DirectorySubspace nodeSubspace;
+  private final FdbNodeStatReader fdbNodeStatReader;
 
-  public FdbNodeReader(DirectorySubspace nodeSubspace) {
-    this.nodeSubspace = nodeSubspace;
+  @Inject
+  public FdbNodeReader(FdbNodeStatReader fdbNodeStatReader) {
+    this.fdbNodeStatReader = fdbNodeStatReader;
   }
 
-  public FdbNode deserialize(Transaction transaction) {
-    return deserialize(transaction.getRange(nodeSubspace.range()).asList().join());
+  public FdbNode deserialize(DirectorySubspace nodeSubspace, Transaction transaction) {
+    return deserialize(nodeSubspace, transaction.getRange(nodeSubspace.range()).asList().join());
   }
 
-  public FdbNode deserialize(byte[] key, byte[] value) {
-    return deserialize(Collections.singletonList(new KeyValue(key, value)));
-  }
-
-  public FdbNode deserialize(List<KeyValue> keyValues) {
+  public FdbNode deserialize(DirectorySubspace nodeSubspace, List<KeyValue> keyValues) {
     ListMultimap<byte[], KeyValue> keyValuesByPrefix = ArrayListMultimap.create();
 
     byte[] dataPrefix = nodeSubspace.get(FdbSchemaConstants.DATA_KEY).pack();
@@ -57,27 +55,13 @@ public class FdbNodeReader {
 
     return new FdbNode(
         Joiner.on("/").join(nodeSubspace.getPath()),
-        getStat(keyValuesByPrefix.get(FdbSchemaConstants.STAT_KEY)),
+        getStat(nodeSubspace, keyValuesByPrefix.get(FdbSchemaConstants.STAT_KEY)),
         getData(keyValuesByPrefix.get(FdbSchemaConstants.DATA_KEY)),
         getAcls(keyValuesByPrefix.get(FdbSchemaConstants.ACL_KEY)));
   }
 
-  private StatPersisted getStat(List<KeyValue> keyValues) {
-    if (keyValues.size() != 1) {
-      LOG.error("Stat with multiple keys: {}", keyValues);
-      return new StatPersisted();
-    }
-
-    final StatPersisted statPersisted = new StatPersisted();
-
-    try {
-      statPersisted.readFields(ByteStreams.newDataInput(keyValues.get(0).getValue()));
-      return statPersisted;
-    } catch (IOException e) {
-      LOG.error("Unknown stat bytes", e);
-    }
-
-    return statPersisted;
+  private Stat getStat(Subspace nodeSubspace, List<KeyValue> keyValues) {
+    return fdbNodeStatReader.readNode(nodeSubspace, keyValues);
   }
 
   private byte[] getData(List<KeyValue> keyValues) {

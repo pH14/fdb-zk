@@ -15,18 +15,25 @@ import com.apple.foundationdb.directory.DirectoryLayer;
 import com.apple.foundationdb.directory.DirectorySubspace;
 import com.apple.foundationdb.directory.NoSuchDirectoryException;
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 import com.hubspot.algebra.Result;
 import com.ph14.fdb.zk.layer.FdbNodeReader;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 
-public class FdbGetData extends BaseFdbOp<GetDataRequest, GetDataResponse> {
+public class FdbGetData implements BaseFdbOp<GetDataRequest, GetDataResponse> {
 
-  public FdbGetData(Request rawRequest, Transaction transaction, GetDataRequest request) {
-    super(rawRequest, transaction, request);
+  private final FdbNodeReader fdbNodeReader;
+  private final FdbWatchManager fdbWatchManager;
+
+  @Inject
+  public FdbGetData(FdbNodeReader fdbNodeReader,
+                    FdbWatchManager fdbWatchManager) {
+    this.fdbNodeReader = fdbNodeReader;
+    this.fdbWatchManager = fdbWatchManager;
   }
 
   @Override
-  public Result<GetDataResponse, KeeperException> execute() {
+  public Result<GetDataResponse, KeeperException> execute(Request zkRequest, Transaction transaction, GetDataRequest request) {
     List<String> path = ImmutableList.copyOf(request.getPath().split("/"));
 
     final DirectorySubspace subspace;
@@ -40,10 +47,10 @@ public class FdbGetData extends BaseFdbOp<GetDataRequest, GetDataResponse> {
       }
     }
 
-    byte[] data = new FdbNodeReader(subspace).deserialize(transaction).getData();
+    byte[] data = fdbNodeReader.deserialize(subspace, transaction).getData();
 
     if (request.getWatch()) {
-      new FdbWatchManager().addNodeDataUpdatedWatch(transaction, subspace, rawRequest.cnxn);
+      fdbWatchManager.addNodeDataUpdatedWatch(transaction, subspace, zkRequest.cnxn);
     }
 
     return Result.ok(new GetDataResponse(data, new Stat()));

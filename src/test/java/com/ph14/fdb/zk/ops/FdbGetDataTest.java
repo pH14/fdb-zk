@@ -23,18 +23,18 @@ public class FdbGetDataTest extends FdbBaseTest {
   public void itGetsDataFromExistingNode() {
     String data = Strings.repeat("this is the song that never ends ", 10000);
 
-    Result<CreateResponse, KeeperException> result = new FdbCreate(REQUEST, transaction, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0)).execute();
+    Result<CreateResponse, KeeperException> result = fdbCreate.execute(REQUEST, transaction, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0));
     assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
-    Result<GetDataResponse, KeeperException> result2 = new FdbGetData(REQUEST, transaction, new GetDataRequest(BASE_PATH, false)).execute();
+    Result<GetDataResponse, KeeperException> result2 = fdbGetData.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, false));
     assertThat(result2.isOk()).isTrue();
     assertThat(result2.unwrapOrElseThrow()).isEqualTo(new GetDataResponse(data.getBytes(), new Stat()));
   }
 
   @Test
   public void itReturnsErrorIfNodeDoesNotExist() {
-    Result<GetDataResponse, KeeperException> exists = new FdbGetData(REQUEST, transaction, new GetDataRequest(BASE_PATH, false)).execute();
+    Result<GetDataResponse, KeeperException> exists = fdbGetData.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, false));
     assertThat(exists.isOk()).isFalse();
     assertThat(exists.unwrapErrOrElseThrow().code()).isEqualTo(Code.NONODE);
   }

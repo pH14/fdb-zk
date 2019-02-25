@@ -20,18 +20,22 @@ import com.apple.foundationdb.directory.NoSuchDirectoryException;
 import com.apple.foundationdb.tuple.Tuple;
 import com.apple.foundationdb.tuple.Versionstamp;
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 import com.hubspot.algebra.Result;
 import com.ph14.fdb.zk.FdbSchemaConstants;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
 
-public class FdbSetData extends BaseFdbOp<SetDataRequest, SetDataResponse> {
+public class FdbSetData implements BaseFdbOp<SetDataRequest, SetDataResponse> {
 
-  public FdbSetData(Request rawRequest, Transaction transaction, SetDataRequest request) {
-    super(rawRequest, transaction, request);
+  private final FdbNodeWriter fdbNodeWriter;
+
+  @Inject
+  public FdbSetData(FdbNodeWriter fdbNodeWriter) {
+    this.fdbNodeWriter = fdbNodeWriter;
   }
 
   @Override
-  public Result<SetDataResponse, KeeperException> execute() {
+  public Result<SetDataResponse, KeeperException> execute(Request zkRequest, Transaction transaction, SetDataRequest request) {
     List<String> path = ImmutableList.copyOf(request.getPath().split("/"));
 
     final DirectorySubspace subspace;
@@ -46,13 +50,13 @@ public class FdbSetData extends BaseFdbOp<SetDataRequest, SetDataResponse> {
           subspace.pack(Tuple.from(FdbSchemaConstants.DATA_KEY, Integer.MAX_VALUE))
       ));
 
-      List<KeyValue> newDataKeyValues = new FdbNodeWriter(subspace).getDataKeyValues(request.getData());
+      List<KeyValue> newDataKeyValues = fdbNodeWriter.getDataKeyValues(subspace, request.getData());
       newDataKeyValues.forEach(kv -> transaction.set(kv.getKey(), kv.getValue()));
 
       transaction.mutate(
           MutationType.SET_VERSIONSTAMPED_VALUE,
           subspace.get(FdbSchemaConstants.NODE_DATA_UPDATED_KEY).pack(),
-          Tuple.from(Versionstamp.incomplete()).packWithVersionstamp(new byte[0]));
+          Tuple.from(Versionstamp.incomplete()).packWithVersionstamp());
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
         return Result.err(new NoNodeException(request.getPath()));

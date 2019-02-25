@@ -7,6 +7,9 @@ import org.apache.zookeeper.server.ZooKeeperServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.inject.Guice;
+import com.ph14.fdb.zk.config.FdbZooKeeperModule;
+
 public class FdbZooKeeperServer extends ZooKeeperServer {
 
   private static final Logger LOG = LoggerFactory.getLogger(FdbZooKeeperServer.class);
@@ -24,7 +27,9 @@ public class FdbZooKeeperServer extends ZooKeeperServer {
   @Override
   protected void setupRequestProcessors() {
     super.setupRequestProcessors();
-    this.firstProcessor = new FdbRequestProcessor(sessionTracker, firstProcessor);
+
+    FdbZooKeeperImpl fdbZooKeeper = Guice.createInjector(new FdbZooKeeperModule()).getInstance(FdbZooKeeperImpl.class);
+    this.firstProcessor = new FdbRequestProcessor(sessionTracker, firstProcessor, fdbZooKeeper);
   }
 
 }

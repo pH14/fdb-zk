@@ -5,7 +5,6 @@ import java.util.concurrent.CompletionException;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.KeeperException.NodeExistsException;
-import org.apache.zookeeper.data.StatPersisted;
 import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.CreateResponse;
 import org.apache.zookeeper.server.Request;
@@ -14,21 +13,24 @@ import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectoryAlreadyExistsException;
 import com.apple.foundationdb.directory.DirectoryLayer;
 import com.apple.foundationdb.directory.DirectorySubspace;
+import com.google.inject.Inject;
 import com.hubspot.algebra.Result;
 import com.ph14.fdb.zk.layer.FdbNode;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
 
-public class FdbCreate extends BaseFdbOp<CreateRequest, CreateResponse> {
+public class FdbCreate implements BaseFdbOp<CreateRequest, CreateResponse> {
 
   // TODO: Write a Stat into the value
+  private final FdbNodeWriter fdbNodeWriter;
 
-  public FdbCreate(Request rawRequest, Transaction transaction, CreateRequest request) {
-    super(rawRequest, transaction, request);
+  @Inject
+  public FdbCreate(FdbNodeWriter fdbNodeWriter) {
+    this.fdbNodeWriter = fdbNodeWriter;
   }
 
   @Override
-  public Result<CreateResponse, KeeperException> execute() {
-    FdbNode fdbNode = new FdbNode(request.getPath(), new StatPersisted(), request.getData(), request.getAcl());
+  public Result<CreateResponse, KeeperException> execute(Request zkRequest, Transaction transaction, CreateRequest request) {
+    FdbNode fdbNode = new FdbNode(request.getPath(), null, request.getData(), request.getAcl());
 
     if (fdbNode.getSplitPath().size() > 1) {
       boolean parentExists = DirectoryLayer.getDefault().exists(transaction, fdbNode.getSplitPath().subList(0, fdbNode.getSplitPath().size() - 1)).join();
@@ -41,7 +43,7 @@ public class FdbCreate extends BaseFdbOp<CreateRequest, CreateResponse> {
     try {
       DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, fdbNode.getSplitPath()).join();
 
-      new FdbNodeWriter(subspace).serialize(fdbNode)
+      fdbNodeWriter.createNewNode(subspace, fdbNode)
           .forEach(kv -> transaction.set(kv.getKey(), kv.getValue()));
     } catch (CompletionException e) {
       if (e.getCause() instanceof DirectoryAlreadyExistsException) {

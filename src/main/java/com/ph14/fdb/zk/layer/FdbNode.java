@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.StatPersisted;
+import org.apache.zookeeper.data.Stat;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
@@ -13,11 +13,11 @@ import com.google.common.collect.ImmutableList;
 public class FdbNode {
 
   private final String path;
-  private final StatPersisted stat;
+  private final Stat stat;
   private final byte[] data;
   private final List<ACL> acls;
 
-  public FdbNode(String path, StatPersisted stat, byte[] data, List<ACL> acls) {
+  public FdbNode(String path, Stat stat, byte[] data, List<ACL> acls) {
     this.path = path;
     this.stat = stat;
     this.data = data;
@@ -32,7 +32,7 @@ public class FdbNode {
     return ImmutableList.copyOf(path.split("/"));
   }
 
-  public StatPersisted getStat() {
+  public Stat getStat() {
     return stat;
   }
 

@@ -7,7 +7,7 @@ import java.util.List;
 
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
-import org.apache.zookeeper.data.StatPersisted;
+import org.apache.zookeeper.data.Stat;
 import org.junit.Test;
 
 import com.apple.foundationdb.KeyValue;
@@ -24,7 +24,7 @@ public class FdbNodeSerialization extends FdbBaseTest {
 
     FdbNode fdbNode = new FdbNode(
         path,
-        new StatPersisted(123L, 456L, System.currentTimeMillis(), Long.MAX_VALUE - System.currentTimeMillis(), 1337, 7331, 9001, 1L, 2L),
+        new Stat(123L, 456L, System.currentTimeMillis(), Long.MAX_VALUE - System.currentTimeMillis(), 1337, 7331, 9001, 1L, 2, 3, 0L),
         Strings.repeat("hello this is a data block isn't that neat?", 10000).getBytes(),
         Arrays.asList(
             new ACL(123, new Id("a schema", "id!")),
@@ -33,11 +33,11 @@ public class FdbNodeSerialization extends FdbBaseTest {
 
     DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, fdbNode.getSplitPath()).join();
 
-    new FdbNodeWriter(subspace).serialize(fdbNode).forEach(kv -> transaction.set(kv.getKey(), kv.getValue()));
+    fdbNodeWriter.createNewNode(subspace, fdbNode).forEach(kv -> transaction.set(kv.getKey(), kv.getValue()));
 
     List<KeyValue> keyValues = transaction.getRange(subspace.range()).asList().join();
 
-    FdbNode fetchedFdbNode = new FdbNodeReader(subspace).deserialize(keyValues);
+    FdbNode fetchedFdbNode = fdbNodeReader.deserialize(subspace, keyValues);
 
     assertThat(fetchedFdbNode).isEqualToComparingFieldByField(fdbNode);
   }

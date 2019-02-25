@@ -22,6 +22,7 @@ import com.hubspot.algebra.Result;
 import com.ph14.fdb.zk.ops.FdbCreate;
 import com.ph14.fdb.zk.ops.FdbExists;
 import com.ph14.fdb.zk.ops.FdbGetData;
+import com.ph14.fdb.zk.ops.FdbSetData;
 
 public class FdbZooKeeperImpl implements FdbZooKeeperLayer {
 
@@ -45,10 +46,22 @@ public class FdbZooKeeperImpl implements FdbZooKeeperLayer {
       .build();
 
   private final Database fdb;
+  private final FdbCreate fdbCreate;
+  private final FdbExists fdbExists;
+  private final FdbGetData fdbGetData;
+  private final FdbSetData fdbSetData;
 
   @Inject
-  public FdbZooKeeperImpl(Database fdb) {
+  public FdbZooKeeperImpl(Database fdb,
+                          FdbCreate fdbCreate,
+                          FdbExists fdbExists,
+                          FdbGetData fdbGetData,
+                          FdbSetData fdbSetData) {
     this.fdb = fdb;
+    this.fdbCreate = fdbCreate;
+    this.fdbExists = fdbExists;
+    this.fdbGetData = fdbGetData;
+    this.fdbSetData = fdbSetData;
   }
 
   public boolean handlesRequest(Request request) {
@@ -69,17 +82,17 @@ public class FdbZooKeeperImpl implements FdbZooKeeperLayer {
 
   @Override
   public Result<ExistsResponse, KeeperException> exists(Request zkRequest, ExistsRequest existsRequest) {
-    return fdb.run(tr -> new FdbExists(zkRequest, tr, existsRequest).execute());
+    return fdb.run(tr -> fdbExists.execute(zkRequest, tr, existsRequest));
   }
 
   @Override
   public Result<CreateResponse, KeeperException> create(Request zkRequest, CreateRequest createRequest) {
-    return fdb.run(tr -> new FdbCreate(zkRequest, tr, createRequest).execute());
+    return fdb.run(tr -> fdbCreate.execute(zkRequest, tr, createRequest));
   }
 
   @Override
   public Result<GetDataResponse, KeeperException> getData(Request zkRequest, GetDataRequest getDataRequest) {
-    return fdb.run(tr -> new FdbGetData(zkRequest, tr, getDataRequest).execute());
+    return fdb.run(tr -> fdbGetData.execute(zkRequest, tr, getDataRequest));
   }
 
 }

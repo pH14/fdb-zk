@@ -23,7 +23,6 @@ import org.apache.zookeeper.server.SessionTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.apple.foundationdb.FDB;
 import com.google.common.collect.ImmutableSet;
 import com.hubspot.algebra.Result;
 
@@ -55,12 +54,11 @@ public class FdbRequestProcessor implements RequestProcessor {
   private final RequestProcessor defaultRequestProcessor;
 
   public FdbRequestProcessor(SessionTracker sessionTracker,
-                             RequestProcessor defaultRequestProcessor) {
+                             RequestProcessor defaultRequestProcessor,
+                             FdbZooKeeperLayer fdbZooKeeper) {
     this.sessionTracker = sessionTracker;
     this.defaultRequestProcessor = defaultRequestProcessor;
-
-    // TODO: Inject
-    this.fdbZooKeeper = new FdbZooKeeperImpl(FDB.selectAPIVersion(600).open());
+    this.fdbZooKeeper = fdbZooKeeper;
   }
 
   @Override
