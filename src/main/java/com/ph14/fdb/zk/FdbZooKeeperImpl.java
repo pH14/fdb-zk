@@ -19,10 +19,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.hubspot.algebra.Result;
-import com.ph14.fdb.zk.ops.FdbCreate;
-import com.ph14.fdb.zk.ops.FdbExists;
-import com.ph14.fdb.zk.ops.FdbGetData;
-import com.ph14.fdb.zk.ops.FdbSetData;
+import com.ph14.fdb.zk.ops.FdbCreateOp;
+import com.ph14.fdb.zk.ops.FdbExistsOp;
+import com.ph14.fdb.zk.ops.FdbGetDataOp;
+import com.ph14.fdb.zk.ops.FdbSetDataOp;
 
 public class FdbZooKeeperImpl implements FdbZooKeeperLayer {
 
@@ -46,22 +46,22 @@ public class FdbZooKeeperImpl implements FdbZooKeeperLayer {
       .build();
 
   private final Database fdb;
-  private final FdbCreate fdbCreate;
-  private final FdbExists fdbExists;
-  private final FdbGetData fdbGetData;
-  private final FdbSetData fdbSetData;
+  private final FdbCreateOp fdbCreateOp;
+  private final FdbExistsOp fdbExistsOp;
+  private final FdbGetDataOp fdbGetDataOp;
+  private final FdbSetDataOp fdbSetDataOp;
 
   @Inject
   public FdbZooKeeperImpl(Database fdb,
-                          FdbCreate fdbCreate,
-                          FdbExists fdbExists,
-                          FdbGetData fdbGetData,
-                          FdbSetData fdbSetData) {
+                          FdbCreateOp fdbCreateOp,
+                          FdbExistsOp fdbExistsOp,
+                          FdbGetDataOp fdbGetDataOp,
+                          FdbSetDataOp fdbSetDataOp) {
     this.fdb = fdb;
-    this.fdbCreate = fdbCreate;
-    this.fdbExists = fdbExists;
-    this.fdbGetData = fdbGetData;
-    this.fdbSetData = fdbSetData;
+    this.fdbCreateOp = fdbCreateOp;
+    this.fdbExistsOp = fdbExistsOp;
+    this.fdbGetDataOp = fdbGetDataOp;
+    this.fdbSetDataOp = fdbSetDataOp;
   }
 
   public boolean handlesRequest(Request request) {
@@ -82,17 +82,17 @@ public class FdbZooKeeperImpl implements FdbZooKeeperLayer {
 
   @Override
   public Result<ExistsResponse, KeeperException> exists(Request zkRequest, ExistsRequest existsRequest) {
-    return fdb.run(tr -> fdbExists.execute(zkRequest, tr, existsRequest));
+    return fdb.run(tr -> fdbExistsOp.execute(zkRequest, tr, existsRequest));
   }
 
   @Override
   public Result<CreateResponse, KeeperException> create(Request zkRequest, CreateRequest createRequest) {
-    return fdb.run(tr -> fdbCreate.execute(zkRequest, tr, createRequest));
+    return fdb.run(tr -> fdbCreateOp.execute(zkRequest, tr, createRequest));
   }
 
   @Override
   public Result<GetDataResponse, KeeperException> getData(Request zkRequest, GetDataRequest getDataRequest) {
-    return fdb.run(tr -> fdbGetData.execute(zkRequest, tr, getDataRequest));
+    return fdb.run(tr -> fdbGetDataOp.execute(zkRequest, tr, getDataRequest));
   }
 
 }

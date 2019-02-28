@@ -17,10 +17,10 @@ import com.ph14.fdb.zk.layer.FdbNodeStatReader;
 import com.ph14.fdb.zk.layer.FdbNodeStatWriter;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
-import com.ph14.fdb.zk.ops.FdbCreate;
-import com.ph14.fdb.zk.ops.FdbExists;
-import com.ph14.fdb.zk.ops.FdbGetData;
-import com.ph14.fdb.zk.ops.FdbSetData;
+import com.ph14.fdb.zk.ops.FdbCreateOp;
+import com.ph14.fdb.zk.ops.FdbExistsOp;
+import com.ph14.fdb.zk.ops.FdbGetDataOp;
+import com.ph14.fdb.zk.ops.FdbSetDataOp;
 
 public class FdbBaseTest {
 
@@ -35,10 +35,10 @@ public class FdbBaseTest {
   protected FdbNodeStatReader fdbStatReader;
   protected FdbNodeReader fdbNodeReader;
 
-  protected FdbCreate fdbCreate;
-  protected FdbGetData fdbGetData;
-  protected FdbSetData fdbSetData;
-  protected FdbExists fdbExists;
+  protected FdbCreateOp fdbCreateOp;
+  protected FdbGetDataOp fdbGetDataOp;
+  protected FdbSetDataOp fdbSetDataOp;
+  protected FdbExistsOp fdbExistsOp;
 
   protected Database fdb;
   protected Transaction transaction;
@@ -47,16 +47,18 @@ public class FdbBaseTest {
   public void setUp() {
     this.fdb = FDB.selectAPIVersion(600).open();
 
+    SERVER_CNXN.clearWatchedEvents();
+
     fdbNodeStatWriter = new FdbNodeStatWriter();
     fdbNodeWriter = new FdbNodeWriter(fdbNodeStatWriter);
-    fdbWatchManager = new FdbWatchManager();
+    fdbWatchManager = new FdbWatchManager(fdb);
     fdbStatReader = new FdbNodeStatReader();
     fdbNodeReader = new FdbNodeReader(fdbStatReader);
 
-    fdbCreate = new FdbCreate(fdbNodeWriter);
-    fdbGetData = new FdbGetData(fdbNodeReader, fdbWatchManager);
-    fdbSetData = new FdbSetData(fdbNodeWriter);
-    fdbExists = new FdbExists(fdbNodeReader);
+    fdbCreateOp = new FdbCreateOp(fdbNodeWriter, fdbWatchManager);
+    fdbGetDataOp = new FdbGetDataOp(fdbNodeReader, fdbWatchManager);
+    fdbSetDataOp = new FdbSetDataOp(fdbStatReader, fdbNodeWriter, fdbWatchManager);
+    fdbExistsOp = new FdbExistsOp(fdbNodeReader, fdbWatchManager);
 
     fdb.run(tr -> {
       DirectoryLayer.getDefault().removeIfExists(tr, Arrays.asList("", "foo")).join();

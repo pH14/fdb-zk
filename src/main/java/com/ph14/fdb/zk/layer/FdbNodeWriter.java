@@ -2,6 +2,7 @@ package com.ph14.fdb.zk.layer;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.zookeeper.data.ACL;
@@ -11,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import com.apple.foundationdb.KeyValue;
 import com.apple.foundationdb.subspace.Subspace;
 import com.apple.foundationdb.tuple.Tuple;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.io.ByteArrayDataOutput;
@@ -44,10 +44,9 @@ public class FdbNodeWriter {
 
     if (dataLength > FdbSchemaConstants.ZK_MAX_DATA_LENGTH) {
       // this is the actual ZK error. it uses jute.maxBuffer + 1024
-      // throw new IOException("Unreasonable length " + dataLength);
+      throw new RuntimeException(new IOException("Unreasonable length " + dataLength));
     }
 
-    Preconditions.checkArgument(dataLength < FdbSchemaConstants.ZK_MAX_DATA_LENGTH, "node data too large, was: " + dataLength);
     List<byte[]> dataBlocks = ByteUtil.divideByteArray(data, FdbSchemaConstants.FDB_MAX_VALUE_SIZE);
 
     ImmutableList.Builder<KeyValue> keyValues = ImmutableList.builder();
@@ -61,6 +60,10 @@ public class FdbNodeWriter {
     }
 
     return keyValues.build();
+  }
+
+  public Iterable<KeyValue> getStatDiffKeyValues(Subspace nodeSubspace, Map<StatKey, Long> newValues) {
+    return fdbNodeStatWriter.getStatDiffKeyValues(nodeSubspace, newValues);
   }
 
   private Iterable<KeyValue> getStatKeyValues(Subspace nodeSubspace, FdbNode fdbNode) {
@@ -94,8 +97,8 @@ public class FdbNodeWriter {
 
   private List<KeyValue> getWatchKeys(Subspace nodeSubspace) {
     return ImmutableList.of(
-        new KeyValue(nodeSubspace.get(FdbSchemaConstants.NODE_CREATED_WATCH_KEY).pack(), FdbSchemaConstants.EMPTY_BYTES),
-        new KeyValue(nodeSubspace.get(FdbSchemaConstants.CHILD_CREATED_WATCH_KEY).pack(), FdbSchemaConstants.EMPTY_BYTES)
+        //        new KeyValue(nodeSubspace.get(FdbSchemaConstants.NODE_CREATED_WATCH_KEY).pack(), FdbSchemaConstants.EMPTY_BYTES),
+        //        new KeyValue(nodeSubspace.get(FdbSchemaConstants.CHILD_CREATED_WATCH_KEY).pack(), FdbSchemaConstants.EMPTY_BYTES)
     );
   }
 

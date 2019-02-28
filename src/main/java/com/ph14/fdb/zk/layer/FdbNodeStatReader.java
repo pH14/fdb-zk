@@ -1,5 +1,6 @@
 package com.ph14.fdb.zk.layer;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -7,6 +8,7 @@ import org.apache.zookeeper.data.Stat;
 
 import com.apple.foundationdb.KeyValue;
 import com.apple.foundationdb.Transaction;
+import com.apple.foundationdb.async.AsyncUtil;
 import com.apple.foundationdb.subspace.Subspace;
 import com.apple.foundationdb.tuple.ByteArrayUtil;
 import com.google.common.primitives.Ints;
@@ -24,6 +26,19 @@ public class FdbNodeStatReader {
     return readNode(
         nodeSubspace,
         transaction.getRange(nodeSubspace.get(FdbSchemaConstants.STAT_KEY).range()).asList());
+  }
+
+  public CompletableFuture<Stat> readNode(Subspace nodeSubspace, Transaction transaction, StatKey ... statKeys) {
+    Subspace statSubspace = nodeSubspace.get(FdbSchemaConstants.STAT_KEY);
+
+    List<CompletableFuture<KeyValue>> futures = new ArrayList<>(statKeys.length);
+
+    for (StatKey statKey : statKeys) {
+      byte[] key = statKey.toKey(statSubspace);
+      futures.add(transaction.get(key).thenApply(value -> new KeyValue(key, value)));
+    }
+
+    return AsyncUtil.getAll(futures).thenApply(kvs -> readNode(nodeSubspace, kvs));
   }
 
   public CompletableFuture<Stat> readNode(Subspace nodeSubspace, CompletableFuture<List<KeyValue>> keyValues) {

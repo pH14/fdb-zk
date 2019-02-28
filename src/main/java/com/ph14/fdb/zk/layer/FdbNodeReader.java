@@ -2,6 +2,7 @@ package com.ph14.fdb.zk.layer;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
@@ -32,8 +33,9 @@ public class FdbNodeReader {
     this.fdbNodeStatReader = fdbNodeStatReader;
   }
 
-  public FdbNode deserialize(DirectorySubspace nodeSubspace, Transaction transaction) {
-    return deserialize(nodeSubspace, transaction.getRange(nodeSubspace.range()).asList().join());
+  public CompletableFuture<FdbNode> deserialize(DirectorySubspace nodeSubspace, Transaction transaction) {
+    return transaction.getRange(nodeSubspace.range()).asList()
+        .thenApply(kvs -> deserialize(nodeSubspace, kvs));
   }
 
   public FdbNode deserialize(DirectorySubspace nodeSubspace, List<KeyValue> keyValues) {

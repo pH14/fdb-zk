@@ -17,15 +17,18 @@ import com.google.inject.Inject;
 import com.hubspot.algebra.Result;
 import com.ph14.fdb.zk.layer.FdbNode;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
+import com.ph14.fdb.zk.layer.FdbWatchManager;
 
-public class FdbCreate implements BaseFdbOp<CreateRequest, CreateResponse> {
+public class FdbCreateOp implements BaseFdbOp<CreateRequest, CreateResponse> {
 
-  // TODO: Write a Stat into the value
   private final FdbNodeWriter fdbNodeWriter;
+  private final FdbWatchManager fdbWatchManager;
 
   @Inject
-  public FdbCreate(FdbNodeWriter fdbNodeWriter) {
+  public FdbCreateOp(FdbNodeWriter fdbNodeWriter,
+                     FdbWatchManager fdbWatchManager) {
     this.fdbNodeWriter = fdbNodeWriter;
+    this.fdbWatchManager = fdbWatchManager;
   }
 
   @Override
@@ -45,6 +48,8 @@ public class FdbCreate implements BaseFdbOp<CreateRequest, CreateResponse> {
 
       fdbNodeWriter.createNewNode(subspace, fdbNode)
           .forEach(kv -> transaction.set(kv.getKey(), kv.getValue()));
+
+      fdbWatchManager.triggerNodeCreatedWatch(transaction, request.getPath());
     } catch (CompletionException e) {
       if (e.getCause() instanceof DirectoryAlreadyExistsException) {
         return Result.err(new NodeExistsException(request.getPath()));

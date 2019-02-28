@@ -93,4 +93,8 @@ public class MockFdbServerCnxn extends ServerCnxn {
     return watchedEvents;
   }
 
+  public void clearWatchedEvents() {
+    watchedEvents.clear();
+  }
+
 }
