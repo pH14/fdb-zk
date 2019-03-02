@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import com.apple.foundationdb.KeyValue;
 import com.apple.foundationdb.MutationType;
+import com.apple.foundationdb.Range;
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.subspace.Subspace;
 import com.apple.foundationdb.tuple.Tuple;
@@ -39,8 +40,8 @@ public class FdbNodeWriter {
   }
 
   public void createNewNode(Transaction transaction, Subspace nodeSubspace, FdbNode fdbNode) {
-    writeData(transaction, nodeSubspace, fdbNode.getData());
     writeStat(transaction, nodeSubspace, fdbNode);
+    writeData(transaction, nodeSubspace, fdbNode.getData());
     writeACLs(transaction, nodeSubspace, fdbNode.getAcls());
   }
 
@@ -51,6 +52,11 @@ public class FdbNodeWriter {
       // this is the actual ZK error. it uses jute.maxBuffer + 1024 as the max znode size
       throw new RuntimeException(new IOException("Unreasonable length " + dataLength));
     }
+
+    transaction.clear(new Range(
+        nodeSubspace.pack(Tuple.from(FdbSchemaConstants.DATA_KEY, 0)),
+        nodeSubspace.pack(Tuple.from(FdbSchemaConstants.DATA_KEY, Integer.MAX_VALUE))
+    ));
 
     List<byte[]> dataBlocks = ByteUtil.divideByteArray(data, FdbSchemaConstants.FDB_MAX_VALUE_SIZE);
 

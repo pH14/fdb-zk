@@ -16,14 +16,14 @@ import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectoryLayer;
 import com.apple.foundationdb.directory.DirectorySubspace;
 import com.apple.foundationdb.directory.NoSuchDirectoryException;
-import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.hubspot.algebra.Result;
 import com.ph14.fdb.zk.layer.FdbNode;
 import com.ph14.fdb.zk.layer.FdbNodeReader;
+import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 
-public class FdbGetDataOp implements BaseFdbOp<GetDataRequest, GetDataResponse> {
+public class FdbGetDataOp implements FdbOp<GetDataRequest, GetDataResponse> {
 
   private static final Logger LOG = LoggerFactory.getLogger(FdbGetDataOp.class);
 
@@ -39,7 +39,7 @@ public class FdbGetDataOp implements BaseFdbOp<GetDataRequest, GetDataResponse> 
 
   @Override
   public CompletableFuture<Result<GetDataResponse, KeeperException>> execute(Request zkRequest, Transaction transaction, GetDataRequest request) {
-    List<String> path = ImmutableList.copyOf(request.getPath().split("/"));
+    List<String> path = FdbPath.toFdbPath(request.getPath());
 
     final DirectorySubspace subspace;
     try {
@@ -62,7 +62,7 @@ public class FdbGetDataOp implements BaseFdbOp<GetDataRequest, GetDataResponse> 
 
     if (request.getWatch()) {
       fdbWatchManager.addNodeDataUpdatedWatch(transaction, request.getPath(), zkRequest.cnxn);
-      // TODO: Allow setting watch for node deletion
+      fdbWatchManager.addNodeDeletedWatch(transaction, request.getPath(), zkRequest.cnxn);
     }
 
     return CompletableFuture.completedFuture(Result.ok(new GetDataResponse(fdbNode.join().getData(), fdbNode.join().getStat())));

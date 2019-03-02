@@ -31,7 +31,7 @@ public class FdbNodeSerialization extends FdbBaseTest {
             new ACL(456, new Id("another schema", "!id"))
         ));
 
-    DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, fdbNode.getSplitPath()).join();
+    DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, fdbNode.getFdbPath()).join();
 
     fdbNodeWriter.createNewNode(transaction, subspace, fdbNode);
 

@@ -57,7 +57,7 @@ public class FdbNodeReader {
     }
 
     return new FdbNode(
-        Joiner.on("/").join(nodeSubspace.getPath()),
+        FdbPath.toZkPath(nodeSubspace.getPath()),
         getNodeStat(nodeSubspace, keyValuesByPrefix.get(FdbSchemaConstants.STAT_KEY)),
         getData(keyValuesByPrefix.get(FdbSchemaConstants.DATA_KEY)),
         getAcls(keyValuesByPrefix.get(FdbSchemaConstants.ACL_KEY)));

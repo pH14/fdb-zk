@@ -82,4 +82,50 @@ public class FdbGetDataOpTest extends FdbBaseTest {
     assertThat(event.getPath()).isEqualTo(BASE_PATH);
   }
 
+  @Test
+  public void itSetsWatchForNodeDeletion() throws InterruptedException {
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
+
+    assertThat(result.isOk()).isTrue();
+    assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
+
+    Result<GetDataResponse, KeeperException> result2 = fdb.run(tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, true))).join();
+    assertThat(result2.isOk()).isTrue();
+
+    fdb.run(tr -> {
+      fdbWatchManager.triggerNodeDeletedWatch(tr, BASE_PATH);
+      return null;
+    });
+
+    WatchedEvent event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);
+    assertThat(event).isNotNull();
+    assertThat(event.getType()).isEqualTo(EventType.NodeDeleted);
+    assertThat(event.getPath()).isEqualTo(BASE_PATH);
+  }
+
+  @Test
+  public void itDoesntTriggerTwoWatchesForUpdateAndDelete() throws InterruptedException {
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
+
+    assertThat(result.isOk()).isTrue();
+    assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
+
+    Result<GetDataResponse, KeeperException> result2 = fdb.run(tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, true))).join();
+    assertThat(result2.isOk()).isTrue();
+
+    fdb.run(tr -> {
+      fdbWatchManager.triggerNodeUpdatedWatch(tr, BASE_PATH);
+      fdbWatchManager.triggerNodeDeletedWatch(tr, BASE_PATH);
+      return null;
+    });
+
+    WatchedEvent event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);
+    assertThat(event).isNotNull();
+
+    event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);
+    assertThat(event).isNull();
+  }
+
 }

@@ -14,6 +14,7 @@ import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectoryLayer;
 import com.ph14.fdb.zk.layer.FdbNodeReader;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
+import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 import com.ph14.fdb.zk.ops.FdbCreateOp;
 import com.ph14.fdb.zk.ops.FdbExistsOp;
@@ -55,10 +56,8 @@ public class FdbBaseTest {
     fdbExistsOp = new FdbExistsOp(fdbNodeReader, fdbWatchManager);
 
     fdb.run(tr -> {
-      DirectoryLayer.getDefault().removeIfExists(tr, Arrays.asList("", "foo")).join();
-      DirectoryLayer.getDefault().removeIfExists(tr, Arrays.asList("", "foo", "bar")).join();
-      DirectoryLayer.getDefault().removeIfExists(tr, Arrays.asList("foo")).join();
-      DirectoryLayer.getDefault().removeIfExists(tr, Arrays.asList("foo", "bar")).join();
+      DirectoryLayer.getDefault().removeIfExists(tr, FdbPath.toFdbPath(BASE_PATH)).join();
+      DirectoryLayer.getDefault().removeIfExists(tr, FdbPath.toFdbPath(SUBPATH)).join();
       return null;
     });
 

@@ -13,26 +13,23 @@ import org.apache.zookeeper.proto.SetDataResponse;
 import org.apache.zookeeper.server.Request;
 
 import com.apple.foundationdb.Database;
-import com.apple.foundationdb.Range;
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectoryLayer;
 import com.apple.foundationdb.directory.DirectorySubspace;
 import com.apple.foundationdb.directory.NoSuchDirectoryException;
-import com.apple.foundationdb.tuple.Tuple;
 import com.apple.foundationdb.tuple.Versionstamp;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Longs;
 import com.google.inject.Inject;
 import com.hubspot.algebra.Result;
 import com.hubspot.algebra.Results;
-import com.ph14.fdb.zk.FdbSchemaConstants;
 import com.ph14.fdb.zk.layer.FdbNodeReader;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
+import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 import com.ph14.fdb.zk.layer.StatKey;
 
-public class FdbSetDataOp implements BaseFdbOp<SetDataRequest, SetDataResponse> {
+public class FdbSetDataOp implements FdbOp<SetDataRequest, SetDataResponse> {
 
   private final FdbNodeWriter fdbNodeWriter;
   private final FdbNodeReader fdbNodeReader;
@@ -49,23 +46,17 @@ public class FdbSetDataOp implements BaseFdbOp<SetDataRequest, SetDataResponse> 
 
   @Override
   public CompletableFuture<Result<SetDataResponse, KeeperException>> execute(Request zkRequest, Transaction transaction, SetDataRequest request) {
-    List<String> path = ImmutableList.copyOf(request.getPath().split("/"));
+    List<String> path = FdbPath.toFdbPath(request.getPath());
 
     final DirectorySubspace subspace;
     final Stat stat;
     try {
       subspace = DirectoryLayer.getDefault().open(transaction, path).join();
-
       stat = fdbNodeReader.getNodeStat(subspace, transaction).join();
 
       if (stat.getVersion() != request.getVersion()) {
         return CompletableFuture.completedFuture(Result.err(new BadVersionException(request.getPath())));
       }
-
-      transaction.clear(new Range(
-          subspace.pack(Tuple.from(FdbSchemaConstants.DATA_KEY, 0)),
-          subspace.pack(Tuple.from(FdbSchemaConstants.DATA_KEY, Integer.MAX_VALUE))
-      ));
 
       fdbNodeWriter.writeData(transaction, subspace, request.getData());
 

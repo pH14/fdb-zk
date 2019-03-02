@@ -78,8 +78,6 @@ public class FdbZooKeeperImpl implements FdbZooKeeperLayer {
     return Result.ok(null);
   }
 
-  // do we want something like ResponseWithWatch, RequestWithRawRequest as the inputs?
-
   @Override
   public Result<ExistsResponse, KeeperException> exists(Request zkRequest, ExistsRequest existsRequest) {
     return fdb.run(tr -> fdbExistsOp.execute(zkRequest, tr, existsRequest)).join();

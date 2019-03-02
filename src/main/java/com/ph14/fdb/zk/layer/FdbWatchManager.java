@@ -2,6 +2,7 @@ package com.ph14.fdb.zk.layer;
 
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -17,15 +18,15 @@ import com.apple.foundationdb.directory.DirectoryLayer;
 import com.apple.foundationdb.directory.DirectorySubspace;
 import com.apple.foundationdb.tuple.Tuple;
 import com.apple.foundationdb.tuple.Versionstamp;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ListMultimap;
 import com.google.inject.Inject;
 
 /**
- * GetData -- sets watch for data changes or node deletion
- * Exists -- if doesn't exist, set watch for node creation. if does exist, set watch for deletion or getData
- *
- * For these we'll want to register multiple watches (and for creation, we want the path directly w/o directory layer
- * since we don't know which prefix we'll get yet), and when the first one fires, removes all of the client's watches
- * for that particular path
+ * Uses the DirectoryLayer to allocate a small keyspace for
+ * creation / update / deletes watches. When these events
+ * occur, the keys are written with a versionstamp mutation
+ * that trigger watches
  */
 public class FdbWatchManager {
 
@@ -36,6 +37,8 @@ public class FdbWatchManager {
   private static final byte[] CREATED_NODE_PATH = new byte[] { 1 };
   private static final byte[] DELETED_NODE_PATH = new byte[] { 2 };
   private static final byte[] UPDATED_NODE_PATH = new byte[] { 3 };
+
+  private final ListMultimap<Watcher, CompletableFuture<Void>> watchesByWatcher = ArrayListMultimap.create();
 
   private final byte[] versionstampValue;
   private final DirectorySubspace directorySubspace;
@@ -60,40 +63,48 @@ public class FdbWatchManager {
   }
 
   public void addNodeCreatedWatch(Transaction transaction, String zkPath, Watcher watcher) {
-    LOG.info("Adding creation watch Path is : {}", getCreatedWatchPath(zkPath));
-    CompletableFuture<Void> watch = transaction.watch(getCreatedWatchPath(zkPath));
+    synchronized (watcher) {
+      CompletableFuture<Void> watch = transaction.watch(getCreatedWatchPath(zkPath));
+      watch.whenComplete(createWatchCallback(watcher, zkPath, EventType.NodeCreated));
 
-    watch.whenComplete((v, e) -> {
-      if (e != null) {
-        throw new RuntimeException(e);
-      }
-
-      watcher.process(new WatchedEvent(EventType.NodeCreated, KeeperState.SyncConnected, zkPath));
-    });
+      watchesByWatcher.put(watcher, watch);
+    }
   }
 
   public void addNodeDataUpdatedWatch(Transaction transaction, String zkPath, Watcher watcher) {
-    CompletableFuture<Void> watch = transaction.watch(getUpdatedWatchPath(zkPath));
+    synchronized (watcher) {
+      CompletableFuture<Void> watch = transaction.watch(getUpdatedWatchPath(zkPath));
+      watch.whenComplete(createWatchCallback(watcher, zkPath, EventType.NodeDataChanged));
 
-    watch.whenComplete((v, e) -> {
-      if (e != null) {
-        throw new RuntimeException(e);
-      }
-
-      watcher.process(new WatchedEvent(EventType.NodeDataChanged, KeeperState.SyncConnected, zkPath));
-    });
+      watchesByWatcher.put(watcher, watch);
+    }
   }
 
   public void addNodeDeletedWatch(Transaction transaction, String zkPath, Watcher watcher) {
-    CompletableFuture<Void> watch = transaction.watch(getDeletedWatchPath(zkPath));
+    synchronized (watcher) {
+      CompletableFuture<Void> watch = transaction.watch(getDeletedWatchPath(zkPath));
+      watch.whenComplete(createWatchCallback(watcher, zkPath, EventType.NodeDeleted));
 
-    watch.whenComplete((v, e) -> {
+      watchesByWatcher.put(watcher, watch);
+    }
+  }
+
+  private BiConsumer<Void, Throwable> createWatchCallback(Watcher watcher, String zkPath, EventType eventType) {
+    return (v, e) -> {
       if (e != null) {
         throw new RuntimeException(e);
       }
 
-      watcher.process(new WatchedEvent(EventType.NodeDeleted, KeeperState.SyncConnected, zkPath));
-    });
+      synchronized (watcher) {
+        if (watchesByWatcher.get(watcher).isEmpty()) {
+          return;
+        }
+
+        watcher.process(new WatchedEvent(eventType, KeeperState.SyncConnected, zkPath));
+
+        watchesByWatcher.get(watcher).clear();
+      }
+    };
   }
 
   private byte[] getCreatedWatchPath(String zkPath) {

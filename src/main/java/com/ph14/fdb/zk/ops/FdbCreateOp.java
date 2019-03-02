@@ -20,7 +20,7 @@ import com.ph14.fdb.zk.layer.FdbNode;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 
-public class FdbCreateOp implements BaseFdbOp<CreateRequest, CreateResponse> {
+public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
 
   private final FdbNodeWriter fdbNodeWriter;
   private final FdbWatchManager fdbWatchManager;
@@ -36,8 +36,8 @@ public class FdbCreateOp implements BaseFdbOp<CreateRequest, CreateResponse> {
   public CompletableFuture<Result<CreateResponse, KeeperException>> execute(Request zkRequest, Transaction transaction, CreateRequest request) {
     FdbNode fdbNode = new FdbNode(request.getPath(), null, request.getData(), request.getAcl());
 
-    if (fdbNode.getSplitPath().size() > 1) {
-      boolean parentExists = DirectoryLayer.getDefault().exists(transaction, fdbNode.getSplitPath().subList(0, fdbNode.getSplitPath().size() - 1)).join();
+    if (fdbNode.getFdbPath().size() > 1) {
+      boolean parentExists = DirectoryLayer.getDefault().exists(transaction, fdbNode.getFdbPath().subList(0, fdbNode.getFdbPath().size() - 1)).join();
 
       if (!parentExists) {
         return CompletableFuture.completedFuture(Result.err(new NoNodeException(request.getPath())));
@@ -45,7 +45,7 @@ public class FdbCreateOp implements BaseFdbOp<CreateRequest, CreateResponse> {
     }
 
     try {
-      DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, fdbNode.getSplitPath()).join();
+      DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, fdbNode.getFdbPath()).join();
 
       fdbNodeWriter.createNewNode(transaction, subspace, fdbNode);
 
