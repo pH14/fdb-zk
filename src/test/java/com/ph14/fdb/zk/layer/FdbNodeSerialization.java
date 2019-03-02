@@ -33,11 +33,11 @@ public class FdbNodeSerialization extends FdbBaseTest {
 
     DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, fdbNode.getSplitPath()).join();
 
-    fdbNodeWriter.createNewNode(subspace, fdbNode).forEach(kv -> transaction.set(kv.getKey(), kv.getValue()));
+    fdbNodeWriter.createNewNode(transaction, subspace, fdbNode);
 
     List<KeyValue> keyValues = transaction.getRange(subspace.range()).asList().join();
 
-    FdbNode fetchedFdbNode = fdbNodeReader.deserialize(subspace, keyValues);
+    FdbNode fetchedFdbNode = fdbNodeReader.getNode(subspace, keyValues);
 
     assertThat(fetchedFdbNode).isEqualToComparingFieldByField(fdbNode);
   }

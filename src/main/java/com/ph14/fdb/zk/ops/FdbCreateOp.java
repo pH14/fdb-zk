@@ -1,5 +1,6 @@
 package com.ph14.fdb.zk.ops;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import org.apache.zookeeper.KeeperException;
@@ -32,33 +33,32 @@ public class FdbCreateOp implements BaseFdbOp<CreateRequest, CreateResponse> {
   }
 
   @Override
-  public Result<CreateResponse, KeeperException> execute(Request zkRequest, Transaction transaction, CreateRequest request) {
+  public CompletableFuture<Result<CreateResponse, KeeperException>> execute(Request zkRequest, Transaction transaction, CreateRequest request) {
     FdbNode fdbNode = new FdbNode(request.getPath(), null, request.getData(), request.getAcl());
 
     if (fdbNode.getSplitPath().size() > 1) {
       boolean parentExists = DirectoryLayer.getDefault().exists(transaction, fdbNode.getSplitPath().subList(0, fdbNode.getSplitPath().size() - 1)).join();
 
       if (!parentExists) {
-        return Result.err(new NoNodeException(request.getPath()));
+        return CompletableFuture.completedFuture(Result.err(new NoNodeException(request.getPath())));
       }
     }
 
     try {
       DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, fdbNode.getSplitPath()).join();
 
-      fdbNodeWriter.createNewNode(subspace, fdbNode)
-          .forEach(kv -> transaction.set(kv.getKey(), kv.getValue()));
+      fdbNodeWriter.createNewNode(transaction, subspace, fdbNode);
 
       fdbWatchManager.triggerNodeCreatedWatch(transaction, request.getPath());
     } catch (CompletionException e) {
       if (e.getCause() instanceof DirectoryAlreadyExistsException) {
-        return Result.err(new NodeExistsException(request.getPath()));
+        return CompletableFuture.completedFuture(Result.err(new NodeExistsException(request.getPath())));
       } else {
         throw new RuntimeException(e);
       }
     }
 
-    return Result.ok(new CreateResponse(request.getPath()));
+    return CompletableFuture.completedFuture(Result.ok(new CreateResponse(request.getPath())));
   }
 
 }

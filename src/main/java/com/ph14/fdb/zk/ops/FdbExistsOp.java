@@ -1,6 +1,7 @@
 package com.ph14.fdb.zk.ops;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import org.apache.zookeeper.KeeperException;
@@ -35,7 +36,7 @@ public class FdbExistsOp implements BaseFdbOp<ExistsRequest, ExistsResponse> {
   }
 
   @Override
-  public Result<ExistsResponse, KeeperException> execute(Request zkRequest, Transaction transaction, ExistsRequest request) {
+  public CompletableFuture<Result<ExistsResponse, KeeperException>> execute(Request zkRequest, Transaction transaction, ExistsRequest request) {
     List<String> path = ImmutableList.copyOf(request.getPath().split("/"));
 
     final DirectorySubspace subspace;
@@ -44,21 +45,21 @@ public class FdbExistsOp implements BaseFdbOp<ExistsRequest, ExistsResponse> {
 
       Range statKeyRange = subspace.get(FdbSchemaConstants.STAT_KEY).range();
 
-      FdbNode fdbNode = fdbNodeReader.deserialize(subspace, transaction.getRange(statKeyRange).asList().join());
+      FdbNode fdbNode = fdbNodeReader.getNode(subspace, transaction.getRange(statKeyRange).asList().join());
 
       if (request.getWatch()) {
         fdbWatchManager.addNodeDataUpdatedWatch(transaction, request.getPath(), zkRequest.cnxn);
         fdbWatchManager.addNodeDeletedWatch(transaction, request.getPath(), zkRequest.cnxn);
       }
 
-      return Result.ok(new ExistsResponse(fdbNode.getStat()));
+      return CompletableFuture.completedFuture(Result.ok(new ExistsResponse(fdbNode.getStat())));
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
         if (request.getWatch()) {
           fdbWatchManager.addNodeCreatedWatch(transaction, request.getPath(), zkRequest.cnxn);
         }
 
-        return Result.err(new NoNodeException(request.getPath()));
+        return CompletableFuture.completedFuture(Result.err(new NoNodeException(request.getPath())));
       } else {
         throw new RuntimeException(e);
       }

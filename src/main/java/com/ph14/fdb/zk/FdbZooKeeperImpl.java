@@ -82,17 +82,17 @@ public class FdbZooKeeperImpl implements FdbZooKeeperLayer {
 
   @Override
   public Result<ExistsResponse, KeeperException> exists(Request zkRequest, ExistsRequest existsRequest) {
-    return fdb.run(tr -> fdbExistsOp.execute(zkRequest, tr, existsRequest));
+    return fdb.run(tr -> fdbExistsOp.execute(zkRequest, tr, existsRequest)).join();
   }
 
   @Override
   public Result<CreateResponse, KeeperException> create(Request zkRequest, CreateRequest createRequest) {
-    return fdb.run(tr -> fdbCreateOp.execute(zkRequest, tr, createRequest));
+    return fdb.run(tr -> fdbCreateOp.execute(zkRequest, tr, createRequest)).join();
   }
 
   @Override
   public Result<GetDataResponse, KeeperException> getData(Request zkRequest, GetDataRequest getDataRequest) {
-    return fdb.run(tr -> fdbGetDataOp.execute(zkRequest, tr, getDataRequest));
+    return fdb.run(tr -> fdbGetDataOp.execute(zkRequest, tr, getDataRequest)).join();
   }
 
 }

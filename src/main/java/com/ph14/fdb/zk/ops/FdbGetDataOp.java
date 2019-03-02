@@ -38,7 +38,7 @@ public class FdbGetDataOp implements BaseFdbOp<GetDataRequest, GetDataResponse> 
   }
 
   @Override
-  public Result<GetDataResponse, KeeperException> execute(Request zkRequest, Transaction transaction, GetDataRequest request) {
+  public CompletableFuture<Result<GetDataResponse, KeeperException>> execute(Request zkRequest, Transaction transaction, GetDataRequest request) {
     List<String> path = ImmutableList.copyOf(request.getPath().split("/"));
 
     final DirectorySubspace subspace;
@@ -51,21 +51,21 @@ public class FdbGetDataOp implements BaseFdbOp<GetDataRequest, GetDataResponse> 
           fdbWatchManager.addNodeCreatedWatch(transaction, request.getPath(), zkRequest.cnxn);
         }
 
-        return Result.err(new NoNodeException(request.getPath()));
+        return CompletableFuture.completedFuture(Result.err(new NoNodeException(request.getPath())));
       } else {
         throw new RuntimeException(e);
       }
     }
 
     // we could be even more targeted and just fetch data
-    CompletableFuture<FdbNode> fdbNode = fdbNodeReader.deserialize(subspace, transaction);
+    CompletableFuture<FdbNode> fdbNode = fdbNodeReader.getNode(subspace, transaction);
 
     if (request.getWatch()) {
       fdbWatchManager.addNodeDataUpdatedWatch(transaction, request.getPath(), zkRequest.cnxn);
       // TODO: Allow setting watch for node deletion
     }
 
-    return Result.ok(new GetDataResponse(fdbNode.join().getData(), fdbNode.join().getStat()));
+    return CompletableFuture.completedFuture(Result.ok(new GetDataResponse(fdbNode.join().getData(), fdbNode.join().getStat())));
   }
 
 }

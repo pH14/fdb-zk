@@ -23,22 +23,18 @@ public class FdbWatchLocalIntegrationTests extends FdbBaseTest {
 
   @Test
   public void itSetsAndFiresWatchForGetDataUpdates() throws InterruptedException {
-    Result<CreateResponse, KeeperException> result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0));
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
     assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
-    Result<GetDataResponse, KeeperException> result2 = fdbGetDataOp.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, true));
+    Result<GetDataResponse, KeeperException> result2 = fdb.run(
+        tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, true))).join();
     assertThat(result2.isOk()).isTrue();
 
-    transaction.commit().join();
-
-    transaction = fdb.createTransaction();
-
-    Result<SetDataResponse, KeeperException> exists = fdbSetDataOp.execute(REQUEST, transaction, new SetDataRequest(BASE_PATH, "hello!".getBytes(), 1));
+    Result<SetDataResponse, KeeperException> exists = fdb.run(
+        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, "hello!".getBytes(), 1))).join();
     assertThat(exists.isOk()).isTrue();
-    assertThat(SERVER_CNXN.getWatchedEvents().peek()).isNull();
-
-    transaction.commit().join();
 
     WatchedEvent event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);
     assertThat(event).isNotNull();

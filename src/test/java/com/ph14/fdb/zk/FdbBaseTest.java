@@ -13,8 +13,6 @@ import com.apple.foundationdb.FDB;
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectoryLayer;
 import com.ph14.fdb.zk.layer.FdbNodeReader;
-import com.ph14.fdb.zk.layer.FdbNodeStatReader;
-import com.ph14.fdb.zk.layer.FdbNodeStatWriter;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 import com.ph14.fdb.zk.ops.FdbCreateOp;
@@ -29,10 +27,8 @@ public class FdbBaseTest {
   protected static final MockFdbServerCnxn SERVER_CNXN = new MockFdbServerCnxn();
   protected static final Request REQUEST = new Request(SERVER_CNXN, System.currentTimeMillis(), 1, 2, null, Collections.emptyList());
 
-  protected FdbNodeStatWriter fdbNodeStatWriter;
   protected FdbNodeWriter fdbNodeWriter;
   protected FdbWatchManager fdbWatchManager;
-  protected FdbNodeStatReader fdbStatReader;
   protected FdbNodeReader fdbNodeReader;
 
   protected FdbCreateOp fdbCreateOp;
@@ -49,15 +45,13 @@ public class FdbBaseTest {
 
     SERVER_CNXN.clearWatchedEvents();
 
-    fdbNodeStatWriter = new FdbNodeStatWriter();
-    fdbNodeWriter = new FdbNodeWriter(fdbNodeStatWriter);
+    fdbNodeWriter = new FdbNodeWriter();
     fdbWatchManager = new FdbWatchManager(fdb);
-    fdbStatReader = new FdbNodeStatReader();
-    fdbNodeReader = new FdbNodeReader(fdbStatReader);
+    fdbNodeReader = new FdbNodeReader();
 
     fdbCreateOp = new FdbCreateOp(fdbNodeWriter, fdbWatchManager);
     fdbGetDataOp = new FdbGetDataOp(fdbNodeReader, fdbWatchManager);
-    fdbSetDataOp = new FdbSetDataOp(fdbStatReader, fdbNodeWriter, fdbWatchManager);
+    fdbSetDataOp = new FdbSetDataOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager);
     fdbExistsOp = new FdbExistsOp(fdbNodeReader, fdbWatchManager);
 
     fdb.run(tr -> {

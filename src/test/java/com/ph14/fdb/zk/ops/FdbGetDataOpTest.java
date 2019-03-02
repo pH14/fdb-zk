@@ -30,16 +30,13 @@ public class FdbGetDataOpTest extends FdbBaseTest {
     long timeBeforeCreation = System.currentTimeMillis();
     String data = Strings.repeat("this is the song that never ends ", 10000);
 
-    Result<CreateResponse, KeeperException> result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0));
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0))).join();
+
     assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
-    transaction.commit().join();
-    transaction = fdb.createTransaction();
-
-    Result<GetDataResponse, KeeperException> result2 = fdbGetDataOp.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, false));
-
-    transaction.commit().join();
+    Result<GetDataResponse, KeeperException> result2 = fdb.run(tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, false))).join();
 
     assertThat(result2.isOk()).isTrue();
     GetDataResponse getDataResponse = result2.unwrapOrElseThrow();
@@ -58,25 +55,26 @@ public class FdbGetDataOpTest extends FdbBaseTest {
 
   @Test
   public void itReturnsErrorIfNodeDoesNotExist() {
-    Result<GetDataResponse, KeeperException> exists = fdbGetDataOp.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, false));
+    Result<GetDataResponse, KeeperException> exists = fdbGetDataOp.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, false)).join();
     assertThat(exists.isOk()).isFalse();
     assertThat(exists.unwrapErrOrElseThrow().code()).isEqualTo(Code.NONODE);
   }
 
   @Test
   public void itSetsWatchForDataUpdate() throws InterruptedException {
-    Result<CreateResponse, KeeperException> result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0));
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
+
     assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
-    Result<GetDataResponse, KeeperException> result2 = fdbGetDataOp.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, true));
+    Result<GetDataResponse, KeeperException> result2 = fdb.run(tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, true))).join();
     assertThat(result2.isOk()).isTrue();
 
-    transaction.commit().join();
-
-    transaction = fdb.createTransaction();
-    fdbWatchManager.triggerNodeUpdatedWatch(transaction, BASE_PATH);
-    transaction.commit().join();
+    fdb.run(tr -> {
+      fdbWatchManager.triggerNodeUpdatedWatch(tr, BASE_PATH);
+      return null;
+    });
 
     WatchedEvent event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);
     assertThat(event).isNotNull();
