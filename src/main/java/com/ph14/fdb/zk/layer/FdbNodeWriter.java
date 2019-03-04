@@ -31,6 +31,7 @@ public class FdbNodeWriter {
   private static final Logger LOG = LoggerFactory.getLogger(FdbNodeWriter.class);
 
   public static final long VERSIONSTAMP_FLAG = Long.MIN_VALUE;
+  public static final long INCREMENT_FLAG = Long.MIN_VALUE + 1;
   private static final byte[] INITIAL_VERSION = Ints.toByteArray(1);
   private final byte[] versionstampValue;
 
@@ -74,6 +75,8 @@ public class FdbNodeWriter {
     for (Entry<StatKey, Long> entry : newValues.entrySet()) {
       if (entry.getValue() == VERSIONSTAMP_FLAG) {
         transaction.mutate(MutationType.SET_VERSIONSTAMPED_VALUE, entry.getKey().toKey(nodeStatSubspace), versionstampValue);
+      } else if (entry.getValue() == INCREMENT_FLAG) {
+        transaction.mutate(MutationType.ADD, entry.getKey().toKey(nodeStatSubspace), Ints.toByteArray(1));
       } else {
         KeyValue keyValue = entry.getKey().toKeyValue(nodeStatSubspace, entry.getValue());
         transaction.set(keyValue.getKey(), keyValue.getValue());

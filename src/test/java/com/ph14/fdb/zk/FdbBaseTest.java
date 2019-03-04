@@ -1,8 +1,8 @@
 package com.ph14.fdb.zk;
 
-import java.util.Arrays;
 import java.util.Collections;
 
+import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.server.MockFdbServerCnxn;
 import org.apache.zookeeper.server.Request;
 import org.junit.After;
@@ -12,6 +12,8 @@ import com.apple.foundationdb.Database;
 import com.apple.foundationdb.FDB;
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectoryLayer;
+import com.apple.foundationdb.directory.DirectorySubspace;
+import com.ph14.fdb.zk.layer.FdbNode;
 import com.ph14.fdb.zk.layer.FdbNodeReader;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
 import com.ph14.fdb.zk.layer.FdbPath;
@@ -50,14 +52,17 @@ public class FdbBaseTest {
     fdbWatchManager = new FdbWatchManager(fdb);
     fdbNodeReader = new FdbNodeReader();
 
-    fdbCreateOp = new FdbCreateOp(fdbNodeWriter, fdbWatchManager);
+    fdbCreateOp = new FdbCreateOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager);
     fdbGetDataOp = new FdbGetDataOp(fdbNodeReader, fdbWatchManager);
     fdbSetDataOp = new FdbSetDataOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager);
     fdbExistsOp = new FdbExistsOp(fdbNodeReader, fdbWatchManager);
 
     fdb.run(tr -> {
-      DirectoryLayer.getDefault().removeIfExists(tr, FdbPath.toFdbPath(BASE_PATH)).join();
-      DirectoryLayer.getDefault().removeIfExists(tr, FdbPath.toFdbPath(SUBPATH)).join();
+      DirectoryLayer.getDefault().removeIfExists(tr, Collections.singletonList(FdbPath.ROOT_PATH)).join();
+      DirectorySubspace rootSubspace = DirectoryLayer.getDefault().create(tr, Collections.singletonList(FdbPath.ROOT_PATH)).join();
+
+      fdbNodeWriter.createNewNode(tr, rootSubspace, new FdbNode("/", null, new byte[0], Ids.OPEN_ACL_UNSAFE));
+
       return null;
     });
 

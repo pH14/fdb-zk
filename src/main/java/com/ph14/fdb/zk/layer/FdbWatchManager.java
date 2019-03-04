@@ -37,6 +37,7 @@ public class FdbWatchManager {
   private static final byte[] CREATED_NODE_PATH = new byte[] { 1 };
   private static final byte[] DELETED_NODE_PATH = new byte[] { 2 };
   private static final byte[] UPDATED_NODE_PATH = new byte[] { 3 };
+  private static final byte[] CHILDREN_NODE_PATH = new byte[] { 4 };
 
   private final ListMultimap<Watcher, CompletableFuture<Void>> watchesByWatcher = ArrayListMultimap.create();
 
@@ -62,8 +63,12 @@ public class FdbWatchManager {
     transaction.mutate(MutationType.SET_VERSIONSTAMPED_VALUE, getDeletedWatchPath(zkPath), versionstampValue);
   }
 
+  public void triggerNodeChildrenWatch(Transaction transaction, String zkPath) {
+    transaction.mutate(MutationType.SET_VERSIONSTAMPED_VALUE, getChildrenWatchPath(zkPath), versionstampValue);
+  }
+
   public void addNodeCreatedWatch(Transaction transaction, String zkPath, Watcher watcher) {
-    synchronized (watcher) {
+    synchronized (watchesByWatcher) {
       CompletableFuture<Void> watch = transaction.watch(getCreatedWatchPath(zkPath));
       watch.whenComplete(createWatchCallback(watcher, zkPath, EventType.NodeCreated));
 
@@ -72,7 +77,7 @@ public class FdbWatchManager {
   }
 
   public void addNodeDataUpdatedWatch(Transaction transaction, String zkPath, Watcher watcher) {
-    synchronized (watcher) {
+    synchronized (watchesByWatcher) {
       CompletableFuture<Void> watch = transaction.watch(getUpdatedWatchPath(zkPath));
       watch.whenComplete(createWatchCallback(watcher, zkPath, EventType.NodeDataChanged));
 
@@ -81,9 +86,18 @@ public class FdbWatchManager {
   }
 
   public void addNodeDeletedWatch(Transaction transaction, String zkPath, Watcher watcher) {
-    synchronized (watcher) {
+    synchronized (watchesByWatcher) {
       CompletableFuture<Void> watch = transaction.watch(getDeletedWatchPath(zkPath));
       watch.whenComplete(createWatchCallback(watcher, zkPath, EventType.NodeDeleted));
+
+      watchesByWatcher.put(watcher, watch);
+    }
+  }
+
+  public void addNodeChildrenWatch(Transaction transaction, String zkPath, Watcher watcher) {
+    synchronized (watchesByWatcher) {
+      CompletableFuture<Void> watch = transaction.watch(getChildrenWatchPath(zkPath));
+      watch.whenComplete(createWatchCallback(watcher, zkPath, EventType.NodeChildrenChanged));
 
       watchesByWatcher.put(watcher, watch);
     }
@@ -95,7 +109,7 @@ public class FdbWatchManager {
         throw new RuntimeException(e);
       }
 
-      synchronized (watcher) {
+      synchronized (watchesByWatcher) {
         if (watchesByWatcher.get(watcher).isEmpty()) {
           return;
         }
@@ -117,6 +131,10 @@ public class FdbWatchManager {
 
   private byte[] getUpdatedWatchPath(String zkPath) {
     return directorySubspace.pack(Tuple.from(UPDATED_NODE_PATH, zkPath));
+  }
+
+  private byte[] getChildrenWatchPath(String zkPath) {
+    return directorySubspace.pack(Tuple.from(CHILDREN_NODE_PATH, zkPath));
   }
 
 }

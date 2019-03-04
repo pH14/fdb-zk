@@ -25,7 +25,6 @@ public class FdbWatchLocalIntegrationTests extends FdbBaseTest {
   public void itSetsAndFiresWatchForGetDataUpdates() throws InterruptedException {
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     Result<GetDataResponse, KeeperException> result2 = fdb.run(

@@ -3,12 +3,15 @@ package com.ph14.fdb.zk;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.Collections;
+import java.util.List;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
 import org.apache.zookeeper.server.ServerCnxn;
@@ -17,7 +20,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FdbZooKeeperServerTest {
+public class LocalRealZooKeeperTest {
 
   @Test
   public void itRunsInProcess() throws Exception {
@@ -28,7 +31,7 @@ public class FdbZooKeeperServerTest {
 
     File dir = new File(dataDirectory).getAbsoluteFile();
 
-    ZooKeeperServer server = new FdbZooKeeperServer(dir, dir, tickTime);
+    ZooKeeperServer server = new ZooKeeperServer(dir, dir, 100);
     NIOServerCnxnFactory standaloneServerFactory = new NIOServerCnxnFactory();
     standaloneServerFactory.configure(new InetSocketAddress(clientPort), numConnections);
 
@@ -53,20 +56,23 @@ public class FdbZooKeeperServerTest {
       System.out.println("Connections: " +  connection.toString());
     }
 
-    Stat exists = zooKeeper.exists("/the-path", false);
+    zooKeeper.create("/start", "hello".getBytes(), Ids.READ_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+
+    Stat exists = zooKeeper.exists("/start0000000001", false);
+    System.out.println("Exists: " + exists);
+    exists = zooKeeper.exists("/start0000000002", false);
+    System.out.println("Exists: " + exists);
+    exists = zooKeeper.exists("/start0000000003", false);
+    System.out.println("Exists: " + exists);
+    exists = zooKeeper.exists("/", false);
     System.out.println("Exists: " + exists);
 
-//    zooKeeper.create("/z", new byte[] { 0x7 }, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-    exists = zooKeeper.exists("/a", false);
-
-//    zooKeeper.create("/test", "hello, world!", Collections.emptyList(), CreateMode.EPHEMERAL);
-
-//    byte[] data = zooKeeper.getData("/z", false, new Stat());
-//    LOG.info("Data: {}", data);
+    List<String> children = zooKeeper.getChildren("/", false);
+    LOG.info("Root level children: {}", children);
 
     standaloneServerFactory.closeAll();
   }
 
-  private static final Logger LOG = LoggerFactory.getLogger(FdbZooKeeperServerTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LocalRealZooKeeperTest.class);
 
 }

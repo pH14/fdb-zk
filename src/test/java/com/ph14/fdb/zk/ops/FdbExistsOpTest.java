@@ -29,13 +29,11 @@ public class FdbExistsOpTest extends FdbBaseTest {
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH, data, Collections.emptyList(), 0))).join();
 
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     Result<ExistsResponse, KeeperException> exists = fdb.run(
         tr -> fdbExistsOp.execute(REQUEST, tr, new ExistsRequest(BASE_PATH, false))).join();
 
-    assertThat(exists.isOk()).isTrue();
     assertThat(exists.unwrapOrElseThrow().getStat()).isNotNull();
 
     Stat stat = exists.unwrapOrElseThrow().getStat();
@@ -52,7 +50,6 @@ public class FdbExistsOpTest extends FdbBaseTest {
   @Test
   public void itReturnsErrorIfNodeDoesNotExist() {
     Result<ExistsResponse, KeeperException> exists = fdbExistsOp.execute(REQUEST, transaction, new ExistsRequest(BASE_PATH, false)).join();
-    assertThat(exists.isOk()).isFalse();
     assertThat(exists.unwrapErrOrElseThrow().code()).isEqualTo(Code.NONODE);
   }
 
@@ -60,13 +57,10 @@ public class FdbExistsOpTest extends FdbBaseTest {
   public void itSetsWatchForDataUpdateIfNodeExists() throws InterruptedException {
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     Result<ExistsResponse, KeeperException> result2 = fdb.run(
         tr -> fdbExistsOp.execute(REQUEST, tr, new ExistsRequest(BASE_PATH, true))).join();
-
-    assertThat(result2.isOk()).isTrue();
 
     fdb.run(tr -> {
       fdbWatchManager.triggerNodeUpdatedWatch(tr, BASE_PATH);
@@ -100,7 +94,6 @@ public class FdbExistsOpTest extends FdbBaseTest {
   public void itSetsWatchForNodeDeletionIfNodeExists() throws InterruptedException {
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     Result<ExistsResponse, KeeperException> result2 = fdb.run(

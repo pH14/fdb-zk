@@ -33,12 +33,10 @@ public class FdbGetDataOpTest extends FdbBaseTest {
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0))).join();
 
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     Result<GetDataResponse, KeeperException> result2 = fdb.run(tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, false))).join();
 
-    assertThat(result2.isOk()).isTrue();
     GetDataResponse getDataResponse = result2.unwrapOrElseThrow();
 
     assertThat(getDataResponse.getData()).isEqualTo(data.getBytes());
@@ -56,7 +54,6 @@ public class FdbGetDataOpTest extends FdbBaseTest {
   @Test
   public void itReturnsErrorIfNodeDoesNotExist() {
     Result<GetDataResponse, KeeperException> exists = fdbGetDataOp.execute(REQUEST, transaction, new GetDataRequest(BASE_PATH, false)).join();
-    assertThat(exists.isOk()).isFalse();
     assertThat(exists.unwrapErrOrElseThrow().code()).isEqualTo(Code.NONODE);
   }
 
@@ -65,7 +62,6 @@ public class FdbGetDataOpTest extends FdbBaseTest {
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
 
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     Result<GetDataResponse, KeeperException> result2 = fdb.run(tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, true))).join();
@@ -87,7 +83,6 @@ public class FdbGetDataOpTest extends FdbBaseTest {
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
 
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     Result<GetDataResponse, KeeperException> result2 = fdb.run(tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, true))).join();
@@ -109,7 +104,6 @@ public class FdbGetDataOpTest extends FdbBaseTest {
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
 
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     Result<GetDataResponse, KeeperException> result2 = fdb.run(tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, true))).join();

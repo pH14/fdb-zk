@@ -30,7 +30,6 @@ public class FdbSetDataOpTest extends FdbBaseTest {
 
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0))).join();
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     long now = System.currentTimeMillis();
@@ -38,7 +37,6 @@ public class FdbSetDataOpTest extends FdbBaseTest {
     final String data2 = "this is something else";
     Result<SetDataResponse, KeeperException> result2 = fdb.run(
         tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, data2.getBytes(), 1))).join();
-    assertThat(result2.isOk()).isTrue();
 
     SetDataResponse setDataResponse = result2.unwrapOrElseThrow();
     assertThat(setDataResponse.getStat().getMtime()).isGreaterThanOrEqualTo(now);
@@ -52,20 +50,17 @@ public class FdbSetDataOpTest extends FdbBaseTest {
     final String data = Strings.repeat("this is the song that never ends ", 10000);
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0))).join();
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     final String data2 = "this is something else";
     Result<SetDataResponse, KeeperException> result2 = fdb.run(
         tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, data2.getBytes(), 2))).join();
-    assertThat(result2.isOk()).isFalse();
     assertThat(result2.unwrapErrOrElseThrow().code()).isEqualTo(Code.BADVERSION);
   }
 
   @Test
   public void itReturnsErrorIfNodeDoesNotExist() {
     Result<SetDataResponse, KeeperException> exists = fdbSetDataOp.execute(REQUEST, transaction, new SetDataRequest(BASE_PATH, "hello".getBytes(), 1)).join();
-    assertThat(exists.isOk()).isFalse();
     assertThat(exists.unwrapErrOrElseThrow().code()).isEqualTo(Code.NONODE);
   }
 
@@ -74,7 +69,6 @@ public class FdbSetDataOpTest extends FdbBaseTest {
     final String data = Strings.repeat("this is the song that never ends ", 10000);
     Result<CreateResponse, KeeperException> result = fdb.run(
         tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  data.getBytes(), Collections.emptyList(), 0))).join();
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     final byte[] bigData = new byte[1024 * 1024];
@@ -92,7 +86,6 @@ public class FdbSetDataOpTest extends FdbBaseTest {
   public void itTriggersWatchForDataChange() throws InterruptedException {
     Result<CreateResponse, KeeperException> result = fdb.run(tr ->
         fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  "hello".getBytes(), Collections.emptyList(), 0))).join();
-    assertThat(result.isOk()).isTrue();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
     CountDownLatch countDownLatch = new CountDownLatch(1);
