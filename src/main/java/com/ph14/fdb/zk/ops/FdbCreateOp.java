@@ -70,6 +70,10 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
       }
     }
 
+    // ephemeral node: disallow children nodes
+    // disallow creation if the heartbeat has been updated by owner recently enough
+    // otherwise allow overwriting of ephemeral node namespace in case client died before removing it
+
     try {
       final String finalZkPath;
 

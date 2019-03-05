@@ -7,6 +7,7 @@ import java.util.concurrent.CompletionException;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.BadVersionException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
+import org.apache.zookeeper.KeeperException.SystemErrorException;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.proto.SetDataRequest;
 import org.apache.zookeeper.proto.SetDataResponse;
@@ -92,14 +93,19 @@ public class FdbSetDataOp implements FdbOp<SetDataRequest, SetDataResponse> {
     CompletableFuture<byte[]> commitVersionstamp = transaction.getVersionstamp();
 
     return CompletableFuture.completedFuture(
-        commitVersionstamp.thenApply(versionstamp ->
-            database.run(tr -> {
-              long readVersionFromStamp = Longs.fromByteArray(Versionstamp.complete(versionstamp).getTransactionVersion());
-              tr.setReadVersion(readVersionFromStamp);
+        commitVersionstamp.handle((versionstamp, e) -> {
+          if (e != null) {
+            return Result.<SetDataResponse, KeeperException>err(new SystemErrorException());
+          }
 
-              Stat updatedStat = fdbNodeReader.getNodeStat(subspace, tr).join();
-              return Result.<SetDataResponse, KeeperException>ok(new SetDataResponse(updatedStat));
-            }))).join();
+          return database.run(tr -> {
+            long readVersionFromStamp = Longs.fromByteArray(Versionstamp.complete(versionstamp).getTransactionVersion());
+            tr.setReadVersion(readVersionFromStamp);
+
+            Stat updatedStat = fdbNodeReader.getNodeStat(subspace, tr).join();
+            return Result.<SetDataResponse, KeeperException>ok(new SetDataResponse(updatedStat));
+          });
+        })).join();
   }
 
 }

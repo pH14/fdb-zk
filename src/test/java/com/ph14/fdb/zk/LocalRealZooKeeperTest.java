@@ -55,17 +55,23 @@ public class LocalRealZooKeeperTest {
     for (ServerCnxn connection : standaloneServerFactory.getConnections()) {
       System.out.println("Connections: " +  connection.toString());
     }
+//
+//    zooKeeper.create("/start2", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+//    zooKeeper.create("/start2/1", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+//    zooKeeper.create("/start2/2", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+//    zooKeeper.create("/start2/2/a", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 
-    zooKeeper.create("/start", "hello".getBytes(), Ids.READ_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+    List<String> keeperChildren = zooKeeper.getChildren("/start2", false);
+    LOG.info("Keep children: {}", keeperChildren);
 
-    Stat exists = zooKeeper.exists("/start0000000001", false);
-    System.out.println("Exists: " + exists);
-    exists = zooKeeper.exists("/start0000000002", false);
-    System.out.println("Exists: " + exists);
-    exists = zooKeeper.exists("/start0000000003", false);
-    System.out.println("Exists: " + exists);
-    exists = zooKeeper.exists("/", false);
-    System.out.println("Exists: " + exists);
+    //    Stat exists = zooKeeper.exists("/start0000000001", false);
+//    System.out.println("Exists: " + exists);
+//    exists = zooKeeper.exists("/start0000000002", false);
+//    System.out.println("Exists: " + exists);
+//    exists = zooKeeper.exists("/start0000000003", false);
+//    System.out.println("Exists: " + exists);
+//    exists = zooKeeper.exists("/", false);
+//    System.out.println("Exists: " + exists);
 
     List<String> children = zooKeeper.getChildren("/", false);
     LOG.info("Root level children: {}", children);
