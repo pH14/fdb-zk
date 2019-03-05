@@ -2,17 +2,13 @@ package com.ph14.fdb.zk;
 
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
 import org.apache.zookeeper.server.ServerCnxn;
 import org.apache.zookeeper.server.ZooKeeperServer;
@@ -55,14 +51,25 @@ public class LocalRealZooKeeperTest {
     for (ServerCnxn connection : standaloneServerFactory.getConnections()) {
       System.out.println("Connections: " +  connection.toString());
     }
-//
-//    zooKeeper.create("/start2", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-//    zooKeeper.create("/start2/1", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-//    zooKeeper.create("/start2/2", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-//    zooKeeper.create("/start2/2/a", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 
-    List<String> keeperChildren = zooKeeper.getChildren("/start2", false);
+    String root = "/" + String.valueOf(System.currentTimeMillis());
+
+    zooKeeper.create(root, "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+    zooKeeper.create(root, "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+    zooKeeper.create(root, "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+//    LOG.info("CVersion before anything: {}", zooKeeper.exists(root, false).getCversion());
+//    LOG.info("PZXID before anything: {}", zooKeeper.exists(root, false).getPzxid());
+//    zooKeeper.create(root + "/1", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+//    LOG.info("CVersion after 1: {}", zooKeeper.exists(root, false).getCversion());
+//    zooKeeper.create(root + "/2", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+//    LOG.info("CVersion after 2: {}", zooKeeper.exists(root, false).getCversion());
+    List<String> keeperChildren = zooKeeper.getChildren("/", false);
     LOG.info("Keep children: {}", keeperChildren);
+
+    LOG.info("CVersion after creations: {}", zooKeeper.exists(root, false).getCversion());
+    LOG.info("CVersion after creations of /1: {}", zooKeeper.exists(root + "/1", false).getCversion());
+    zooKeeper.delete(root + "/1", 0);
+    LOG.info("CVersion after deletion too: {}", zooKeeper.exists(root, false).getCversion());
 
     //    Stat exists = zooKeeper.exists("/start0000000001", false);
 //    System.out.println("Exists: " + exists);

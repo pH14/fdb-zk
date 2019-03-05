@@ -31,8 +31,17 @@ public class FdbNodeWriter {
   private static final Logger LOG = LoggerFactory.getLogger(FdbNodeWriter.class);
 
   public static final long VERSIONSTAMP_FLAG = Long.MIN_VALUE;
-  public static final long INCREMENT_FLAG = Long.MIN_VALUE + 1;
-  private static final byte[] INITIAL_VERSION = Ints.toByteArray(1);
+  public static final long INCREMENT_LONG_FLAG = Long.MIN_VALUE + 1;
+  public static final long DECREMENT_LONG_FLAG = Long.MIN_VALUE + 2;
+  public static final long INCREMENT_INT_FLAG = Long.MIN_VALUE + 3;
+  public static final long DECREMENT_INT_FLAG = Long.MIN_VALUE + 4;
+
+  private static final byte[] INCREMENT_LONG = ByteArrayUtil.encodeInt(1);
+  private static final byte[] DECREMENT_LONG = ByteArrayUtil.encodeInt(-1);
+  private static final byte[] INCREMENT_INT = ByteUtil.encodeInteger(1);
+  private static final byte[] DECREMENT_INT = ByteUtil.encodeInteger(-1);
+  private static final byte[] INITIAL_VERSION = ByteUtil.encodeInteger(0);
+
   private final byte[] versionstampValue;
 
   @Inject
@@ -75,13 +84,19 @@ public class FdbNodeWriter {
     for (Entry<StatKey, Long> entry : newValues.entrySet()) {
       if (entry.getValue() == VERSIONSTAMP_FLAG) {
         transaction.mutate(MutationType.SET_VERSIONSTAMPED_VALUE, entry.getKey().toKey(nodeStatSubspace), versionstampValue);
-      } else if (entry.getValue() == INCREMENT_FLAG) {
-        transaction.mutate(MutationType.ADD, entry.getKey().toKey(nodeStatSubspace), Ints.toByteArray(1));
+      } else if (entry.getValue() == INCREMENT_LONG_FLAG) {
+        transaction.mutate(MutationType.ADD, entry.getKey().toKey(nodeStatSubspace), INCREMENT_LONG);
+      } else if (entry.getValue() == DECREMENT_LONG_FLAG) {
+        transaction.mutate(MutationType.ADD, entry.getKey().toKey(nodeStatSubspace), DECREMENT_LONG);
       } else {
         KeyValue keyValue = entry.getKey().toKeyValue(nodeStatSubspace, entry.getValue());
         transaction.set(keyValue.getKey(), keyValue.getValue());
       }
     }
+  }
+
+  public void deleteNode(Transaction transaction, Subspace nodeSubspace) {
+    transaction.clear(nodeSubspace.range());
   }
 
   private void writeStat(Transaction transaction, Subspace nodeSubspace, FdbNode fdbNode) {

@@ -42,8 +42,8 @@ public class FdbExistsOpTest extends FdbBaseTest {
     assertThat(stat.getMzxid()).isGreaterThan(0L);
     assertThat(stat.getCtime()).isGreaterThanOrEqualTo(timeBeforeExecution);
     assertThat(stat.getMtime()).isGreaterThanOrEqualTo(timeBeforeExecution);
-    assertThat(stat.getVersion()).isEqualTo(1);
-    assertThat(stat.getCversion()).isEqualTo(1);
+    assertThat(stat.getVersion()).isEqualTo(0);
+    assertThat(stat.getCversion()).isEqualTo(0);
     assertThat(stat.getDataLength()).isEqualTo(data.length);
   }
 

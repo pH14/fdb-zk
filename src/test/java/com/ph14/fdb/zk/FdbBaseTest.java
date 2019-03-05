@@ -19,6 +19,7 @@ import com.ph14.fdb.zk.layer.FdbNodeWriter;
 import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 import com.ph14.fdb.zk.ops.FdbCreateOp;
+import com.ph14.fdb.zk.ops.FdbDeleteOp;
 import com.ph14.fdb.zk.ops.FdbExistsOp;
 import com.ph14.fdb.zk.ops.FdbGetChildrenOp;
 import com.ph14.fdb.zk.ops.FdbGetChildrenWithStatOp;
@@ -42,6 +43,7 @@ public class FdbBaseTest {
   protected FdbExistsOp fdbExistsOp;
   protected FdbGetChildrenOp fdbGetChildrenOp;
   protected FdbGetChildrenWithStatOp fdbGetChildrenWithStatOp;
+  protected FdbDeleteOp fdbDeleteOp;
 
   protected Database fdb;
   protected Transaction transaction;
@@ -63,6 +65,7 @@ public class FdbBaseTest {
     fdbExistsOp = new FdbExistsOp(fdbNodeReader, fdbWatchManager);
     fdbGetChildrenWithStatOp = new FdbGetChildrenWithStatOp(fdbNodeReader, fdbWatchManager);
     fdbGetChildrenOp = new FdbGetChildrenOp(fdbGetChildrenWithStatOp);
+    fdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager);
 
     fdb.run(tr -> {
       DirectoryLayer.getDefault().removeIfExists(tr, Collections.singletonList(FdbPath.ROOT_PATH)).join();

@@ -92,8 +92,9 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
           transaction,
           parentSubspace,
           ImmutableMap.of(
-              StatKey.CVERSION, FdbNodeWriter.INCREMENT_FLAG,
-              StatKey.NUM_CHILDREN, FdbNodeWriter.INCREMENT_FLAG));
+              StatKey.PZXID, FdbNodeWriter.VERSIONSTAMP_FLAG,
+              StatKey.CVERSION, FdbNodeWriter.INCREMENT_INT_FLAG,
+              StatKey.NUM_CHILDREN, FdbNodeWriter.INCREMENT_INT_FLAG));
 
       fdbWatchManager.triggerNodeCreatedWatch(transaction, request.getPath());
       fdbWatchManager.triggerNodeChildrenWatch(transaction, FdbPath.toZkParentPath(request.getPath()));

@@ -42,10 +42,10 @@ public class FdbGetDataOpTest extends FdbBaseTest {
     assertThat(getDataResponse.getData()).isEqualTo(data.getBytes());
     assertThat(getDataResponse.getStat().getMzxid()).isGreaterThan(0L);
     assertThat(getDataResponse.getStat().getMzxid()).isEqualTo(getDataResponse.getStat().getCzxid());
-    assertThat(getDataResponse.getStat().getVersion()).isEqualTo(1);
+    assertThat(getDataResponse.getStat().getVersion()).isEqualTo(0);
     assertThat(getDataResponse.getStat().getCtime()).isGreaterThanOrEqualTo(timeBeforeCreation);
     assertThat(getDataResponse.getStat().getCtime()).isEqualTo(getDataResponse.getStat().getMtime());
-    assertThat(getDataResponse.getStat().getAversion()).isEqualTo(1);
+    assertThat(getDataResponse.getStat().getAversion()).isEqualTo(0);
     assertThat(getDataResponse.getStat().getNumChildren()).isEqualTo(0);
     assertThat(getDataResponse.getStat().getEphemeralOwner()).isEqualTo(0);
     assertThat(getDataResponse.getStat().getDataLength()).isEqualTo(data.getBytes().length);

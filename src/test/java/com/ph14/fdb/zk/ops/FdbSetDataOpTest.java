@@ -36,12 +36,12 @@ public class FdbSetDataOpTest extends FdbBaseTest {
 
     final String data2 = "this is something else";
     Result<SetDataResponse, KeeperException> result2 = fdb.run(
-        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, data2.getBytes(), 1))).join();
+        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, data2.getBytes(), 0))).join();
 
     SetDataResponse setDataResponse = result2.unwrapOrElseThrow();
     assertThat(setDataResponse.getStat().getMtime()).isGreaterThanOrEqualTo(now);
     assertThat(setDataResponse.getStat().getCtime()).isLessThan(setDataResponse.getStat().getMtime());
-    assertThat(setDataResponse.getStat().getVersion()).isEqualTo(2);
+    assertThat(setDataResponse.getStat().getVersion()).isEqualTo(1);
     assertThat(setDataResponse.getStat().getDataLength()).isEqualTo(data2.getBytes().length);
   }
 
@@ -73,12 +73,12 @@ public class FdbSetDataOpTest extends FdbBaseTest {
 
     final byte[] bigData = new byte[1024 * 1024];
     Result<SetDataResponse, KeeperException> result2 = fdb.run(
-        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, bigData, 1))).join();
+        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, bigData, 0))).join();
     assertThat(result2.isOk()).isTrue();
 
     assertThatThrownBy(() -> {
       final byte[] webscaleDataTM = new byte[1024 * 1024 + 1];
-      fdbSetDataOp.execute(REQUEST, transaction, new SetDataRequest(BASE_PATH, webscaleDataTM, 2)).join();
+      fdbSetDataOp.execute(REQUEST, transaction, new SetDataRequest(BASE_PATH, webscaleDataTM, 1)).join();
     }).hasCauseInstanceOf(IOException.class);
   }
 
@@ -101,7 +101,7 @@ public class FdbSetDataOpTest extends FdbBaseTest {
     });
 
     Result<SetDataResponse, KeeperException> exists = fdb.run(
-        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, "hello!".getBytes(), 1))).join();
+        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, "hello!".getBytes(), 0))).join();
 
     assertThat(exists.isOk()).isTrue();
     assertThat(SERVER_CNXN.getWatchedEvents().peek()).isNull();
