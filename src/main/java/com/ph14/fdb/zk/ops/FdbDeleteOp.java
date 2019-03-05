@@ -64,11 +64,14 @@ public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
 
       DirectorySubspace parentSubspace = DirectoryLayer.getDefault().open(transaction, FdbPath.toFdbParentPath(request.getPath())).join();
 
+      // could eliminate this read by using atomic ops and using endianness correctly
+      Stat parentStat = fdbNodeReader.getNodeStat(parentSubspace, transaction, StatKey.CVERSION, StatKey.NUM_CHILDREN).join();
+
       fdbNodeWriter.writeStat(transaction, parentSubspace,
           ImmutableMap.of(
               StatKey.PZXID, FdbNodeWriter.VERSIONSTAMP_FLAG,
-              StatKey.CVERSION, FdbNodeWriter.INCREMENT_INT_FLAG,
-              StatKey.NUM_CHILDREN, FdbNodeWriter.DECREMENT_INT_FLAG
+              StatKey.CVERSION, parentStat.getCversion() + 1L,
+              StatKey.NUM_CHILDREN, parentStat.getNumChildren() - 1L
           ));
 
       fdbNodeWriter.deleteNode(transaction, nodeSubspace);

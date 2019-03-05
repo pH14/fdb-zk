@@ -24,31 +24,37 @@ public class FdbCreateOpTest extends FdbBaseTest {
 
   @Test
   public void itCreatesADirectory() {
-    Result<CreateResponse, KeeperException> result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(BASE_PATH,  new byte[0], Collections.emptyList(), 0)).join();
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH,  new byte[0], Collections.emptyList(), 0))).join();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
   }
 
   @Test
   public void itDoesNotCreateTheSameDirectoryTwice() {
-    Result<CreateResponse, KeeperException> result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0)).join();
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0))).join();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
-    result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0)).join();
+    result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0))).join();
     assertThat(result.unwrapErrOrElseThrow().code()).isEqualTo(Code.NODEEXISTS);
   }
 
   @Test
   public void itDoesNotCreateDirectoryWithoutParent() {
-    Result<CreateResponse, KeeperException> result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(SUBPATH, new byte[0], Collections.emptyList(), 0)).join();
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(SUBPATH, new byte[0], Collections.emptyList(), 0))).join();
     assertThat(result.unwrapErrOrElseThrow().code()).isEqualTo(Code.NONODE);
   }
 
   @Test
   public void itProgressivelyCreatesNodes() {
-    Result<CreateResponse, KeeperException> result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0)).join();
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0))).join();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
 
-    result = fdbCreateOp.execute(REQUEST, transaction, new CreateRequest(SUBPATH, new byte[0], Collections.emptyList(), 0)).join();
+    result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(SUBPATH, new byte[0], Collections.emptyList(), 0))).join();
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(SUBPATH));
   }
 
@@ -86,13 +92,16 @@ public class FdbCreateOpTest extends FdbBaseTest {
 
     assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH + "0000000001"));
 
-    Result<ExistsResponse, KeeperException> exists = fdbExistsOp.execute(REQUEST, transaction, new ExistsRequest(BASE_PATH, false)).join();
+    Result<ExistsResponse, KeeperException> exists = fdb.run(
+        tr -> fdbExistsOp.execute(REQUEST, tr, new ExistsRequest(BASE_PATH, false))).join();
     assertThat(exists.isOk()).isFalse();
 
-    exists = fdbExistsOp.execute(REQUEST, transaction, new ExistsRequest(BASE_PATH + "0000000002", false)).join();
+    exists = fdb.run(
+        tr -> fdbExistsOp.execute(REQUEST, tr, new ExistsRequest(BASE_PATH + "0000000002", false))).join();
     assertThat(exists.isOk()).isFalse();
 
-    exists = fdbExistsOp.execute(REQUEST, transaction, new ExistsRequest(BASE_PATH + "0000000001", false)).join();
+    exists = fdb.run(
+        tr -> fdbExistsOp.execute(REQUEST, tr, new ExistsRequest(BASE_PATH + "0000000001", false))).join();
     assertThat(exists.isOk()).isTrue();
   }
 

@@ -14,24 +14,26 @@ import com.google.common.primitives.Shorts;
 public enum StatKey {
   // Creation ZXID. Use Versionstamp at creation time
   CZXID(1, StatKeyValueType.LONG),
-  // Modification ZXID. Use Versionstamp at creation time
+  // Modification ZXID. Use Versionstamp at creation time / data modification time
   MZXID(2, StatKeyValueType.LONG),
+  // Parent ZXID. Use versionstamp at creation / child creation+deletion time
+  PZXID(3, StatKeyValueType.LONG),
   // Creation timestamp, epoch millis
-  CTIME(3, StatKeyValueType.LONG),
+  CTIME(4, StatKeyValueType.LONG),
   // Modification timestamp, epoch millis
-  MTIME(4, StatKeyValueType.LONG),
+  MTIME(5, StatKeyValueType.LONG),
   // # of updates to this node
-  VERSION(5, StatKeyValueType.INT),
+  VERSION(6, StatKeyValueType.INT),
   // # of updates to this node's children
-  CVERSION(6, StatKeyValueType.INT),
+  CVERSION(7, StatKeyValueType.INT),
   // # of updates to this node's ACL policies
-  AVERSION(7, StatKeyValueType.INT),
+  AVERSION(8, StatKeyValueType.INT),
   // Session ID of ephemeral owner. -1 if permanent
-  EPHEMERAL_OWNER(8, StatKeyValueType.LONG),
+  EPHEMERAL_OWNER(9, StatKeyValueType.LONG),
   // Num bytes of data in node
-  DATA_LENGTH(9, StatKeyValueType.INT),
+  DATA_LENGTH(10, StatKeyValueType.INT),
   // Number of children of this node
-  NUM_CHILDREN(10, StatKeyValueType.INT)
+  NUM_CHILDREN(11, StatKeyValueType.INT)
   ;
 
   private enum StatKeyValueType {

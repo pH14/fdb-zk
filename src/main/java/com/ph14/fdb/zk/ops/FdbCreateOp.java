@@ -60,7 +60,7 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
 
     try {
       parentSubspace = DirectoryLayer.getDefault().open(transaction, FdbPath.toFdbParentPath(request.getPath())).join();
-      parentStat = fdbNodeReader.getNodeStat(parentSubspace, transaction, StatKey.CVERSION).join();
+      parentStat = fdbNodeReader.getNodeStat(parentSubspace, transaction).join();
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
         return CompletableFuture.completedFuture(Result.err(new KeeperException.NoNodeException("parent: " + request.getPath())));
@@ -88,13 +88,14 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
 
       fdbNodeWriter.createNewNode(transaction, subspace, fdbNode);
 
+      // need atomic ops / little-endian storage if we want multis to work
       fdbNodeWriter.writeStat(
           transaction,
           parentSubspace,
           ImmutableMap.of(
               StatKey.PZXID, FdbNodeWriter.VERSIONSTAMP_FLAG,
-              StatKey.CVERSION, FdbNodeWriter.INCREMENT_INT_FLAG,
-              StatKey.NUM_CHILDREN, FdbNodeWriter.INCREMENT_INT_FLAG));
+              StatKey.CVERSION, parentStat.getCversion() + 1L,
+              StatKey.NUM_CHILDREN, parentStat.getNumChildren() + 1L));
 
       fdbWatchManager.triggerNodeCreatedWatch(transaction, request.getPath());
       fdbWatchManager.triggerNodeChildrenWatch(transaction, FdbPath.toZkParentPath(request.getPath()));

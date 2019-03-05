@@ -132,6 +132,9 @@ public class FdbNodeReader {
         case MZXID:
           stat.setMzxid(Longs.fromByteArray(keyValue.getValue()));
           break;
+        case PZXID:
+          stat.setPzxid(Longs.fromByteArray(keyValue.getValue()));
+          break;
         case CTIME:
           stat.setCtime(Longs.fromByteArray(keyValue.getValue()));
           break;
