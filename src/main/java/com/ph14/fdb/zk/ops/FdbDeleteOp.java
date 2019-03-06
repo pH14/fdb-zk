@@ -8,10 +8,13 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.BadVersionException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.KeeperException.NotEmptyException;
+import org.apache.zookeeper.KeeperException.SystemErrorException;
 import org.apache.zookeeper.OpResult.DeleteResult;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.proto.DeleteRequest;
 import org.apache.zookeeper.server.Request;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.directory.DirectoryLayer;
@@ -28,6 +31,8 @@ import com.ph14.fdb.zk.layer.FdbWatchManager;
 import com.ph14.fdb.zk.layer.StatKey;
 
 public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FdbDeleteOp.class);
 
   private static final int ALL_VERSIONS_FLAG = -1;
 
@@ -50,6 +55,9 @@ public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
 
     final DirectorySubspace nodeSubspace;
     final Stat stat;
+
+    final DirectorySubspace parentNodeSubspace;
+    final Stat parentStat;
     try {
       nodeSubspace = DirectoryLayer.getDefault().open(transaction, path).join();
       stat = fdbNodeReader.getNodeStat(nodeSubspace, transaction).join();
@@ -61,32 +69,33 @@ public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
       if (request.getVersion() != ALL_VERSIONS_FLAG && stat.getVersion() != request.getVersion()) {
         return CompletableFuture.completedFuture(Result.err(new BadVersionException(request.getPath())));
       }
-
-      DirectorySubspace parentSubspace = DirectoryLayer.getDefault().open(transaction, FdbPath.toFdbParentPath(request.getPath())).join();
-
-      // could eliminate this read by using atomic ops and using endianness correctly
-      Stat parentStat = fdbNodeReader.getNodeStat(parentSubspace, transaction, StatKey.CVERSION, StatKey.NUM_CHILDREN).join();
-
-      fdbNodeWriter.writeStat(transaction, parentSubspace,
-          ImmutableMap.of(
-              StatKey.PZXID, FdbNodeWriter.VERSIONSTAMP_FLAG,
-              StatKey.CVERSION, parentStat.getCversion() + 1L,
-              StatKey.NUM_CHILDREN, parentStat.getNumChildren() - 1L
-          ));
-
-      fdbNodeWriter.deleteNode(transaction, nodeSubspace);
-
-      fdbWatchManager.triggerNodeDeletedWatch(transaction, request.getPath());
-      fdbWatchManager.triggerNodeChildrenWatch(transaction, request.getPath());
-
-      return CompletableFuture.completedFuture(Result.ok(new DeleteResult()));
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
         return CompletableFuture.completedFuture(Results.err(new NoNodeException(request.getPath())));
       } else {
-        throw new RuntimeException(e);
+        LOG.error("Error completing request: {}, {}", zkRequest, e);
+        return CompletableFuture.completedFuture(Results.err(new SystemErrorException()));
       }
     }
+
+    parentNodeSubspace = DirectoryLayer.getDefault().open(transaction, FdbPath.toFdbParentPath(request.getPath())).join();
+
+    // could eliminate this read by using atomic ops and using endianness correctly
+    parentStat = fdbNodeReader.getNodeStat(parentNodeSubspace, transaction, StatKey.CVERSION, StatKey.NUM_CHILDREN).join();
+
+    fdbNodeWriter.writeStat(transaction, parentNodeSubspace,
+        ImmutableMap.of(
+            StatKey.PZXID, FdbNodeWriter.VERSIONSTAMP_FLAG,
+            StatKey.CVERSION, parentStat.getCversion() + 1L,
+            StatKey.NUM_CHILDREN, parentStat.getNumChildren() - 1L
+        ));
+
+    nodeSubspace.remove(transaction).join();
+
+    fdbWatchManager.triggerNodeDeletedWatch(transaction, request.getPath());
+    fdbWatchManager.triggerNodeChildrenWatch(transaction, request.getPath());
+
+    return CompletableFuture.completedFuture(Result.ok(new DeleteResult()));
   }
 
 }

@@ -8,6 +8,7 @@ import org.apache.jute.Record;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.MultiResponse;
 import org.apache.zookeeper.MultiTransactionRecord;
+import org.apache.zookeeper.OpResult.DeleteResult;
 import org.apache.zookeeper.ZooDefs.OpCode;
 import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.CreateResponse;
@@ -33,7 +34,10 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.hubspot.algebra.Result;
 import com.ph14.fdb.zk.ops.FdbCreateOp;
+import com.ph14.fdb.zk.ops.FdbDeleteOp;
 import com.ph14.fdb.zk.ops.FdbExistsOp;
+import com.ph14.fdb.zk.ops.FdbGetChildrenOp;
+import com.ph14.fdb.zk.ops.FdbGetChildrenWithStatOp;
 import com.ph14.fdb.zk.ops.FdbGetDataOp;
 import com.ph14.fdb.zk.ops.FdbSetDataOp;
 
@@ -62,18 +66,27 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
   private final FdbExistsOp fdbExistsOp;
   private final FdbGetDataOp fdbGetDataOp;
   private final FdbSetDataOp fdbSetDataOp;
+  private final FdbGetChildrenOp fdbGetChildrenOp;
+  private final FdbGetChildrenWithStatOp fdbGetChildrenWithStatOp;
+  private final FdbDeleteOp fdbDeleteOp;
 
   @Inject
   public FdbZooKeeperImpl(Database fdb,
                           FdbCreateOp fdbCreateOp,
                           FdbExistsOp fdbExistsOp,
                           FdbGetDataOp fdbGetDataOp,
-                          FdbSetDataOp fdbSetDataOp) {
+                          FdbSetDataOp fdbSetDataOp,
+                          FdbGetChildrenOp fdbGetChildrenOp,
+                          FdbGetChildrenWithStatOp fdbGetChildrenWithStatOp,
+                          FdbDeleteOp fdbDeleteOp) {
     this.fdb = fdb;
     this.fdbCreateOp = fdbCreateOp;
     this.fdbExistsOp = fdbExistsOp;
     this.fdbGetDataOp = fdbGetDataOp;
     this.fdbSetDataOp = fdbSetDataOp;
+    this.fdbGetChildrenOp = fdbGetChildrenOp;
+    this.fdbGetChildrenWithStatOp = fdbGetChildrenWithStatOp;
+    this.fdbDeleteOp = fdbDeleteOp;
   }
 
   public boolean handlesRequest(Request request) {
@@ -155,17 +168,17 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
 
   @Override
   public Result<DeleteRequest, KeeperException> delete(Request zkRequest, DeleteRequest deleteRequest) {
-    return null;
+    return fdb.run(tr -> fdbDeleteOp.execute(zkRequest, tr, deleteRequest)).join().mapOk(success -> deleteRequest);
   }
 
   @Override
   public Result<GetChildrenResponse, KeeperException> getChildren(Request zkRequest, GetChildrenRequest getChildrenRequest) {
-    return null;
+    return fdb.run(tr -> fdbGetChildrenOp.execute(zkRequest, tr, getChildrenRequest)).join();
   }
 
   @Override
   public Result<GetChildren2Response, KeeperException> getChildrenAndStat(Request zkRequest, GetChildren2Request getChildrenRequest) {
-    return null;
+    return fdb.run(tr -> fdbGetChildrenWithStatOp.execute(zkRequest, tr, getChildrenRequest)).join();
   }
 
   @Override

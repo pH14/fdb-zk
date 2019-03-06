@@ -32,7 +32,7 @@ public class FdbWatchLocalIntegrationTests extends FdbBaseTest {
     assertThat(result2.isOk()).isTrue();
 
     Result<SetDataResponse, KeeperException> exists = fdb.run(
-        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, "hello!".getBytes(), 1))).join();
+        tr -> fdbSetDataOp.execute(REQUEST, tr, new SetDataRequest(BASE_PATH, "hello!".getBytes(), 0))).join();
     assertThat(exists.isOk()).isTrue();
 
     WatchedEvent event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);

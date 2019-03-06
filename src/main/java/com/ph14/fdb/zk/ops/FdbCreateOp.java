@@ -74,41 +74,43 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
     // disallow creation if the heartbeat has been updated by owner recently enough
     // otherwise allow overwriting of ephemeral node namespace in case client died before removing it
 
-    try {
-      final String finalZkPath;
+    final String finalZkPath;
+    final FdbNode fdbNode;
+    final DirectorySubspace subspace;
 
+    try {
       if (createMode.isSequential()) {
         finalZkPath = request.getPath() + String.format(Locale.ENGLISH, "%010d", parentStat.getCversion());
       } else {
         finalZkPath = request.getPath();
       }
 
-      FdbNode fdbNode = new FdbNode(finalZkPath, null, request.getData(), request.getAcl());
-      DirectorySubspace subspace = DirectoryLayer.getDefault().create(transaction, FdbPath.toFdbPath(finalZkPath)).join();
-
-      fdbNodeWriter.createNewNode(transaction, subspace, fdbNode);
-
-      // need atomic ops / little-endian storage if we want multis to work
-      fdbNodeWriter.writeStat(
-          transaction,
-          parentSubspace,
-          ImmutableMap.of(
-              StatKey.PZXID, FdbNodeWriter.VERSIONSTAMP_FLAG,
-              StatKey.CVERSION, parentStat.getCversion() + 1L,
-              StatKey.NUM_CHILDREN, parentStat.getNumChildren() + 1L));
-
-      fdbWatchManager.triggerNodeCreatedWatch(transaction, request.getPath());
-      fdbWatchManager.triggerNodeChildrenWatch(transaction, FdbPath.toZkParentPath(request.getPath()));
-
-      return CompletableFuture.completedFuture(Result.ok(new CreateResponse(finalZkPath)));
+      fdbNode = new FdbNode(finalZkPath, null, request.getData(), request.getAcl());
+      subspace = DirectoryLayer.getDefault().create(transaction, FdbPath.toFdbPath(finalZkPath)).join();
     } catch (CompletionException e) {
       if (e.getCause() instanceof DirectoryAlreadyExistsException) {
         return CompletableFuture.completedFuture(Result.err(new NodeExistsException(request.getPath())));
       } else {
         LOG.error("Error completing request : {}. {}", request, e);
-        return CompletableFuture.completedFuture(Result.err(new KeeperException.APIErrorException()));
+        return CompletableFuture.completedFuture(Result.err(new KeeperException.SystemErrorException()));
       }
     }
+
+    fdbNodeWriter.createNewNode(transaction, subspace, fdbNode);
+
+    // need atomic ops / little-endian storage if we want multis to work
+    fdbNodeWriter.writeStat(
+        transaction,
+        parentSubspace,
+        ImmutableMap.of(
+            StatKey.PZXID, FdbNodeWriter.VERSIONSTAMP_FLAG,
+            StatKey.CVERSION, parentStat.getCversion() + 1L,
+            StatKey.NUM_CHILDREN, parentStat.getNumChildren() + 1L));
+
+    fdbWatchManager.triggerNodeCreatedWatch(transaction, request.getPath());
+    fdbWatchManager.triggerNodeChildrenWatch(transaction, FdbPath.toZkParentPath(request.getPath()));
+
+    return CompletableFuture.completedFuture(Result.ok(new CreateResponse(finalZkPath)));
   }
 
 }

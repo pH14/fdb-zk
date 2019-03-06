@@ -1,8 +1,10 @@
 package com.ph14.fdb.zk.ops;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
+import java.util.concurrent.CompletionException;
 
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
@@ -88,6 +90,27 @@ public class FdbDeleteOpTest extends FdbBaseTest {
     assertThat(exists.unwrapOrElseThrow().getStat().getCversion()).isEqualTo(2);
     assertThat(exists.unwrapOrElseThrow().getStat().getNumChildren()).isEqualTo(0);
     assertThat(exists.unwrapOrElseThrow().getStat().getPzxid()).isGreaterThan(initialPzxid);
+  }
+
+  @Test
+  public void itDoesntPerformWritesIfExceptionIsThrown() {
+    fdb.run(tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0))).join();
+    fdb.run(tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(SUBPATH, new byte[0], Collections.emptyList(), 0))).join();
+
+    Result<ExistsResponse, KeeperException> exists = fdb.run(
+        tr -> fdbExistsOp.execute(REQUEST, tr, new ExistsRequest(BASE_PATH, false))).join();
+    assertThat(exists.unwrapOrElseThrow().getStat().getCversion()).isEqualTo(1);
+    assertThat(exists.unwrapOrElseThrow().getStat().getNumChildren()).isEqualTo(1);
+    long initialPzxid = exists.unwrapOrElseThrow().getStat().getPzxid();
+
+    FdbDeleteOp throwingFdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, new ThrowingWatchManager(fdb));
+    assertThatThrownBy(() -> fdb.run(tr -> throwingFdbDeleteOp.execute(REQUEST, tr, new DeleteRequest(SUBPATH, 0))))
+        .hasCauseInstanceOf(RuntimeException.class);
+
+    exists = fdb.run(tr -> fdbExistsOp.execute(REQUEST, tr, new ExistsRequest(BASE_PATH, false))).join();
+    assertThat(exists.unwrapOrElseThrow().getStat().getCversion()).isEqualTo(1);
+    assertThat(exists.unwrapOrElseThrow().getStat().getNumChildren()).isEqualTo(1);
+    assertThat(exists.unwrapOrElseThrow().getStat().getPzxid()).isEqualTo(initialPzxid);
   }
 
 }

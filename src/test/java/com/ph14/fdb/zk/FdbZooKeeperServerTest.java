@@ -2,14 +2,12 @@ package com.ph14.fdb.zk;
 
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.util.Collections;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
 import org.apache.zookeeper.server.ServerCnxn;
 import org.apache.zookeeper.server.ZooKeeperServer;
@@ -53,16 +51,18 @@ public class FdbZooKeeperServerTest {
       System.out.println("Connections: " +  connection.toString());
     }
 
-    Stat exists = zooKeeper.exists("/the-path", false);
-    System.out.println("Exists: " + exists);
+    LOG.info("Children: {}", zooKeeper.getChildren("/the-path2", false));
+    LOG.info("Exists: {}", zooKeeper.exists("/the-path2", false).getCversion());
+    zooKeeper.delete("/the-path2/more-path", -1);
+    zooKeeper.delete("/the-path2/even-more-path", -1);
+//    zooKeeper.delete("/the-path2", -1);
+    String s = zooKeeper.create("/the-path2", "some data goes here!".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+    LOG.info("Stat: {}", zooKeeper.exists("/the-path", false));
 
-//    zooKeeper.create("/z", new byte[] { 0x7 }, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-    exists = zooKeeper.exists("/a", false);
+    zooKeeper.create("/the-path2/more-path", "some data goes here!".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+    zooKeeper.create("/the-path2/even-more-path", "some data goes here!".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
 
-//    zooKeeper.create("/test", "hello, world!", Collections.emptyList(), CreateMode.EPHEMERAL);
-
-//    byte[] data = zooKeeper.getData("/z", false, new Stat());
-//    LOG.info("Data: {}", data);
+    LOG.info("Children: {}", zooKeeper.getChildren("/the-path2", false));
 
     standaloneServerFactory.closeAll();
   }

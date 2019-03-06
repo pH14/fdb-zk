@@ -3,6 +3,7 @@ package com.ph14.fdb.zk;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.MultiResponse;
 import org.apache.zookeeper.MultiTransactionRecord;
+import org.apache.zookeeper.OpResult.DeleteResult;
 import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.CreateResponse;
 import org.apache.zookeeper.proto.DeleteRequest;

@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.APIErrorException;
 import org.apache.zookeeper.KeeperException.BadVersionException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.KeeperException.SystemErrorException;
@@ -58,24 +59,24 @@ public class FdbSetDataOp implements FdbOp<SetDataRequest, SetDataResponse> {
       if (stat.getVersion() != request.getVersion()) {
         return CompletableFuture.completedFuture(Result.err(new BadVersionException(request.getPath())));
       }
-
-      fdbNodeWriter.writeData(transaction, subspace, request.getData());
-
-      fdbNodeWriter.writeStat(transaction, subspace, ImmutableMap.<StatKey, Long>builder()
-          .put(StatKey.MZXID, FdbNodeWriter.VERSIONSTAMP_FLAG)
-          .put(StatKey.MTIME, System.currentTimeMillis())
-          .put(StatKey.VERSION, stat.getVersion() + 1L)
-          .put(StatKey.DATA_LENGTH, (long) request.getData().length)
-          .build());
-
-      fdbWatchManager.triggerNodeUpdatedWatch(transaction, request.getPath());
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
         return CompletableFuture.completedFuture(Results.err(new NoNodeException(request.getPath())));
       } else {
-        throw new RuntimeException(e);
+        return CompletableFuture.completedFuture(Results.err(new APIErrorException()));
       }
     }
+
+    fdbNodeWriter.writeData(transaction, subspace, request.getData());
+
+    fdbNodeWriter.writeStat(transaction, subspace, ImmutableMap.<StatKey, Long>builder()
+        .put(StatKey.MZXID, FdbNodeWriter.VERSIONSTAMP_FLAG)
+        .put(StatKey.MTIME, System.currentTimeMillis())
+        .put(StatKey.VERSION, stat.getVersion() + 1L)
+        .put(StatKey.DATA_LENGTH, (long) request.getData().length)
+        .build());
+
+    fdbWatchManager.triggerNodeUpdatedWatch(transaction, request.getPath());
 
     // This is a little messy... the ZK API returns the Stat of the node after modification.
     // The MZXID, the global transaction id at modification time, will be updated by the
