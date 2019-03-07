@@ -9,6 +9,7 @@ import org.apache.zookeeper.proto.ReplyHeader;
 import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.RequestProcessor;
 import org.apache.zookeeper.server.SessionTracker;
+import org.apache.zookeeper.server.ZKDatabase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,13 +21,16 @@ public class FdbRequestProcessor implements RequestProcessor {
 
   private final FdbZooKeeperImpl fdbZooKeeper;
   private final SessionTracker sessionTracker;
+  private final ZKDatabase zkDatabase;
   private final RequestProcessor defaultRequestProcessor;
 
   public FdbRequestProcessor(SessionTracker sessionTracker,
                              RequestProcessor defaultRequestProcessor,
+                             ZKDatabase zkDatabase,
                              FdbZooKeeperImpl fdbZooKeeper) {
     this.sessionTracker = sessionTracker;
     this.defaultRequestProcessor = defaultRequestProcessor;
+    this.zkDatabase = zkDatabase;
     this.fdbZooKeeper = fdbZooKeeper;
   }
 
@@ -55,6 +59,7 @@ public class FdbRequestProcessor implements RequestProcessor {
       result = fdbResult.unwrapOrElseThrow();
       errorCode = Code.OK.intValue();
     } else if (fdbResult.isErr()) {
+      LOG.error("Error: {}", fdbResult.unwrapErrOrElseThrow());
       result = null;
       errorCode = fdbResult.unwrapErrOrElseThrow().code().intValue();
     } else {
@@ -63,7 +68,11 @@ public class FdbRequestProcessor implements RequestProcessor {
 
     ReplyHeader hdr = new ReplyHeader(request.cxid, System.currentTimeMillis(), errorCode);
 
+    // need a real solution here, something that replicates zkDatabase all the way down
+    zkDatabase.setlastProcessedZxid(Long.MAX_VALUE);
+
     try {
+      LOG.debug("Returning: {}", result);
       request.cnxn.sendResponse(hdr, result, "response");
     } catch (IOException e) {
       LOG.error("FIXMSG",e);

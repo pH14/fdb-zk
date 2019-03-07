@@ -63,6 +63,7 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
       parentStat = fdbNodeReader.getNodeStat(parentSubspace, transaction).join();
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
+        LOG.error("Couldn't find parent: {} for {}", FdbPath.toFdbParentPath(request.getPath()), request.getPath());
         return CompletableFuture.completedFuture(Result.err(new KeeperException.NoNodeException("parent: " + request.getPath())));
       } else {
         LOG.error("Error completing request : {}. {}", request, e);

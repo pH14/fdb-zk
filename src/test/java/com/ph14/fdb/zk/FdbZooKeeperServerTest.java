@@ -31,6 +31,7 @@ public class FdbZooKeeperServerTest {
     standaloneServerFactory.configure(new InetSocketAddress(clientPort), numConnections);
 
     standaloneServerFactory.startup(server); // start the server.
+    server.startup();
 
     ZooKeeper zooKeeper = new ZooKeeper("localhost:21818", 10000, new Watcher() {
       public void process(WatchedEvent event) {

@@ -32,6 +32,7 @@ public class LocalRealZooKeeperTest {
     standaloneServerFactory.configure(new InetSocketAddress(clientPort), numConnections);
 
     standaloneServerFactory.startup(server); // start the server.
+    standaloneServerFactory.run();
 
     ZooKeeper zooKeeper = new ZooKeeper("localhost:21818", 10000, new Watcher() {
       public void process(WatchedEvent event) {

@@ -47,6 +47,8 @@ public class FdbZooKeeperServer extends ZooKeeperServer {
       });
     }
 
+    getZKDatabase().setlastProcessedZxid(Long.MAX_VALUE);
+
     super.startup();
   }
 
@@ -62,7 +64,7 @@ public class FdbZooKeeperServer extends ZooKeeperServer {
 
   @Override
   public void expire(Session session) {
-    LOG.info("Expiring session: {}", session);
+    LOG.debug("Expiring session: {}", session);
     super.expire(session);
   }
 
@@ -71,7 +73,7 @@ public class FdbZooKeeperServer extends ZooKeeperServer {
     super.setupRequestProcessors();
 
     FdbZooKeeperImpl fdbZooKeeper = Guice.createInjector(new FdbZooKeeperModule()).getInstance(FdbZooKeeperImpl.class);
-    this.firstProcessor = new FdbRequestProcessor(sessionTracker, firstProcessor, fdbZooKeeper);
+    this.firstProcessor = new FdbRequestProcessor(sessionTracker, firstProcessor, getZKDatabase(), fdbZooKeeper);
   }
 
 }
