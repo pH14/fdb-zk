@@ -50,6 +50,11 @@ TODO:
 - [ ] `setACL`
 
 
+### Building with Bazel
+
+* Compiling: `bazel build //:zdb_zk`
+* Dependencies: `bazel query @maven//:all --output=build`
+
 ### License
 
 `fdb-zk` is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
