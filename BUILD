@@ -20,7 +20,7 @@ java_library(
 java_test(
     name = "fdb_zk_test",
     srcs = glob(["src/test/java/**/*.java"]),
-    test_class = "FdbTests",
+    test_class = "com.ph14.fdb.zk.FdbTest",
     size = "small",
     runtime_deps = [
         
