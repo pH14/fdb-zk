@@ -59,6 +59,7 @@ public class FdbNode {
   }
 
   @Override
+  @SuppressWarnings("ArrayHashCode")
   public int hashCode() {
     return Objects.hash(getZkPath(), getStat(), getData(), getAcls());
   }

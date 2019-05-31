@@ -55,6 +55,12 @@ TODO:
 
 https://forums.foundationdb.org/t/fdb-zk-rough-cut-of-zookeeper-api-layer/1278/
 
+### Building with Bazel
+
+* Compiling: `bazel build //:fdb_zk`
+* Testing: `bazel test //:fdb_zk_test`
+* Dependencies: `bazel query @maven//:all --output=build`
+
 ### License
 
 `fdb-zk` is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
