@@ -52,7 +52,7 @@ TODO:
 
 ### Building with Bazel
 
-* Compiling: `bazel build //:zdb_zk`
+* Compiling: `bazel build //:fdb_zk`
 * Testing: `bazel test //:fdb_zk_test`
 * Dependencies: `bazel query @maven//:all --output=build`
 
