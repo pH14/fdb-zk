@@ -48,15 +48,15 @@ public class FdbExistsOp implements FdbOp<ExistsRequest, ExistsResponse> {
       FdbNode fdbNode = fdbNodeReader.getNode(subspace, transaction.getRange(statKeyRange).asList().join());
 
       if (request.getWatch()) {
-        fdbWatchManager.addNodeDataUpdatedWatch(transaction, request.getPath(), zkRequest.cnxn);
-        fdbWatchManager.addNodeDeletedWatch(transaction, request.getPath(), zkRequest.cnxn);
+        fdbWatchManager.addNodeDataUpdatedWatch(transaction, request.getPath(), zkRequest.cnxn, zkRequest.sessionId);
+        fdbWatchManager.addNodeDeletedWatch(transaction, request.getPath(), zkRequest.cnxn, zkRequest.sessionId);
       }
 
       return CompletableFuture.completedFuture(Result.ok(new ExistsResponse(fdbNode.getStat())));
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
         if (request.getWatch()) {
-          fdbWatchManager.addNodeCreatedWatch(transaction, request.getPath(), zkRequest.cnxn);
+          fdbWatchManager.addNodeCreatedWatch(transaction, request.getPath(), zkRequest.cnxn, zkRequest.sessionId);
         }
 
         return CompletableFuture.completedFuture(Result.err(new NoNodeException(request.getPath())));

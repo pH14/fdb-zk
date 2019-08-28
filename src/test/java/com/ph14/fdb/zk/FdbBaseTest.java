@@ -18,6 +18,7 @@ import com.ph14.fdb.zk.layer.FdbNodeReader;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
 import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
+import com.ph14.fdb.zk.layer.changefeed.WatchEventChangefeed;
 import com.ph14.fdb.zk.ops.FdbCreateOp;
 import com.ph14.fdb.zk.ops.FdbDeleteOp;
 import com.ph14.fdb.zk.ops.FdbExistsOp;
@@ -31,7 +32,7 @@ public class FdbBaseTest {
   protected static final String BASE_PATH = "/foo";
   protected static final String SUBPATH = "/foo/bar";
   protected static final MockFdbServerCnxn SERVER_CNXN = new MockFdbServerCnxn();
-  protected static final Request REQUEST = new Request(SERVER_CNXN, System.currentTimeMillis(), 1, 2, null, Collections.emptyList());
+  protected static Request REQUEST = new Request(SERVER_CNXN, System.currentTimeMillis(), 1, 2, null, Collections.emptyList());
 
   protected FdbNodeWriter fdbNodeWriter;
   protected FdbWatchManager fdbWatchManager;
@@ -53,9 +54,10 @@ public class FdbBaseTest {
     this.fdb = FDB.selectAPIVersion(600).open();
 
     SERVER_CNXN.clearWatchedEvents();
+    REQUEST = new Request(SERVER_CNXN, System.nanoTime(), 1, 2, null, Collections.emptyList());
 
     fdbNodeWriter = new FdbNodeWriter();
-    fdbWatchManager = new FdbWatchManager(fdb);
+    fdbWatchManager = new FdbWatchManager(new WatchEventChangefeed(fdb));
     fdbNodeReader = new FdbNodeReader();
 
     fdbCreateOp = new FdbCreateOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager);
