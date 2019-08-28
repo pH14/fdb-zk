@@ -96,7 +96,7 @@ public class FdbSetDataOpTest extends FdbBaseTest {
     };
 
     fdb.run(tr -> {
-      fdbWatchManager.addNodeDataUpdatedWatch(tr, BASE_PATH, watcher);
+      fdbWatchManager.addNodeDataUpdatedWatch(tr, BASE_PATH, watcher, REQUEST.sessionId);
       return null;
     });
 

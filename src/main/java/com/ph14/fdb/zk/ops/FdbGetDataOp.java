@@ -48,7 +48,7 @@ public class FdbGetDataOp implements FdbOp<GetDataRequest, GetDataResponse> {
       if (e.getCause() instanceof NoSuchDirectoryException) {
         if (request.getWatch()) {
           LOG.info("Setting watch on node creation {}", request.getPath());
-          fdbWatchManager.addNodeCreatedWatch(transaction, request.getPath(), zkRequest.cnxn);
+          fdbWatchManager.addNodeCreatedWatch(transaction, request.getPath(), zkRequest.cnxn, zkRequest.sessionId);
         }
 
         return CompletableFuture.completedFuture(Result.err(new NoNodeException(request.getPath())));
@@ -61,8 +61,8 @@ public class FdbGetDataOp implements FdbOp<GetDataRequest, GetDataResponse> {
     CompletableFuture<FdbNode> fdbNode = fdbNodeReader.getNode(subspace, transaction);
 
     if (request.getWatch()) {
-      fdbWatchManager.addNodeDataUpdatedWatch(transaction, request.getPath(), zkRequest.cnxn);
-      fdbWatchManager.addNodeDeletedWatch(transaction, request.getPath(), zkRequest.cnxn);
+      fdbWatchManager.addNodeDataUpdatedWatch(transaction, request.getPath(), zkRequest.cnxn, zkRequest.sessionId);
+      fdbWatchManager.addNodeDeletedWatch(transaction, request.getPath(), zkRequest.cnxn, zkRequest.sessionId);
     }
 
     return CompletableFuture.completedFuture(Result.ok(new GetDataResponse(fdbNode.join().getData(), fdbNode.join().getStat())));

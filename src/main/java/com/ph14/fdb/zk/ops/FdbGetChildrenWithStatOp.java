@@ -41,8 +41,8 @@ public class FdbGetChildrenWithStatOp implements FdbOp<GetChildren2Request, GetC
       List<String> childrenDirectoryNames = DirectoryLayer.getDefault().list(transaction, path).join();
 
       if (request.getWatch()) {
-        fdbWatchManager.addNodeChildrenWatch(transaction, request.getPath(), zkRequest.cnxn);
-        fdbWatchManager.addNodeDeletedWatch(transaction, request.getPath(), zkRequest.cnxn);
+        fdbWatchManager.addNodeChildrenWatch(transaction, request.getPath(), zkRequest.cnxn, zkRequest.sessionId);
+        fdbWatchManager.addNodeDeletedWatch(transaction, request.getPath(), zkRequest.cnxn, zkRequest.sessionId);
       }
 
       return CompletableFuture.completedFuture(Result.ok(new GetChildren2Response(childrenDirectoryNames, stat)));

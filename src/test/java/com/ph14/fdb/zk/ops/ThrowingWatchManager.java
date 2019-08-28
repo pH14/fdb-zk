@@ -2,13 +2,13 @@ package com.ph14.fdb.zk.ops;
 
 import java.util.concurrent.CompletionException;
 
-import com.apple.foundationdb.Database;
 import com.apple.foundationdb.Transaction;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
+import com.ph14.fdb.zk.layer.changefeed.WatchEventChangefeed;
 
 class ThrowingWatchManager extends FdbWatchManager {
-  public ThrowingWatchManager(Database database) {
-    super(database);
+  public ThrowingWatchManager(WatchEventChangefeed watchEventChangefeed) {
+    super(watchEventChangefeed);
   }
 
   @Override

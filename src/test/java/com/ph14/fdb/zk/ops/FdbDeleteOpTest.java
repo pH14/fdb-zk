@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
-import java.util.concurrent.CompletionException;
 
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
@@ -18,6 +17,7 @@ import org.junit.Test;
 
 import com.hubspot.algebra.Result;
 import com.ph14.fdb.zk.FdbBaseTest;
+import com.ph14.fdb.zk.layer.changefeed.WatchEventChangefeed;
 
 public class FdbDeleteOpTest extends FdbBaseTest {
 
@@ -103,7 +103,7 @@ public class FdbDeleteOpTest extends FdbBaseTest {
     assertThat(exists.unwrapOrElseThrow().getStat().getNumChildren()).isEqualTo(1);
     long initialPzxid = exists.unwrapOrElseThrow().getStat().getPzxid();
 
-    FdbDeleteOp throwingFdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, new ThrowingWatchManager(fdb));
+    FdbDeleteOp throwingFdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, new ThrowingWatchManager(new WatchEventChangefeed(fdb)));
     assertThatThrownBy(() -> fdb.run(tr -> throwingFdbDeleteOp.execute(REQUEST, tr, new DeleteRequest(SUBPATH, 0))))
         .hasCauseInstanceOf(RuntimeException.class);
 
