@@ -17,6 +17,10 @@ public class FdbWatchManager {
     this.watchChangefeed = watchChangefeed;
   }
 
+  public void checkForWatches(long sessionId, Watcher watcher) {
+    watchChangefeed.playChangefeed(sessionId, watcher);
+  }
+
   public void triggerNodeCreatedWatch(Transaction transaction, String zkPath) {
     watchChangefeed.appendToChangefeed(transaction, EventType.NodeCreated, zkPath);
   }

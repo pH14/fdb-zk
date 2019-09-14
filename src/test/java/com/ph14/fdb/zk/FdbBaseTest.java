@@ -36,6 +36,7 @@ public class FdbBaseTest {
 
   protected FdbNodeWriter fdbNodeWriter;
   protected FdbWatchManager fdbWatchManager;
+  protected WatchEventChangefeed watchEventChangefeed;
   protected FdbNodeReader fdbNodeReader;
 
   protected FdbCreateOp fdbCreateOp;
@@ -57,7 +58,8 @@ public class FdbBaseTest {
     REQUEST = new Request(SERVER_CNXN, System.nanoTime(), 1, 2, null, Collections.emptyList());
 
     fdbNodeWriter = new FdbNodeWriter();
-    fdbWatchManager = new FdbWatchManager(new WatchEventChangefeed(fdb));
+    watchEventChangefeed = new WatchEventChangefeed(fdb);
+    fdbWatchManager = new FdbWatchManager(watchEventChangefeed);
     fdbNodeReader = new FdbNodeReader();
 
     fdbCreateOp = new FdbCreateOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager);

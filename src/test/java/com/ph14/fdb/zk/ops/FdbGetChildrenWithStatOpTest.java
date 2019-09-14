@@ -3,6 +3,7 @@ package com.ph14.fdb.zk.ops;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.KeeperException;
@@ -103,6 +104,25 @@ public class FdbGetChildrenWithStatOpTest extends FdbBaseTest {
     assertThat(event).isNotNull();
     assertThat(event.getType()).isEqualTo(EventType.NodeChildrenChanged);
     assertThat(event.getPath()).isEqualTo("/abc");
+  }
+
+  @Test
+  public void itPlaysPendingWatchesBeforeReturning() throws InterruptedException {
+    fdb.run(tr -> {
+      CompletableFuture<Void> fdbWatch = watchEventChangefeed.setZKChangefeedWatch(tr, SERVER_CNXN, REQUEST.sessionId, EventType.NodeCreated, "abc");
+      fdbWatch.cancel(true);
+      watchEventChangefeed.appendToChangefeed(tr, EventType.NodeCreated, "abc");
+      return null;
+    });
+
+    Result<GetChildren2Response, KeeperException> result2 = fdb.run(
+        tr -> fdbGetChildrenWithStatOp.execute(REQUEST, tr, new GetChildren2Request(BASE_PATH, true))).join();
+    assertThat(result2.isOk()).isFalse();
+
+    WatchedEvent event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);
+    assertThat(event).isNotNull();
+    assertThat(event.getType()).isEqualTo(EventType.NodeCreated);
+    assertThat(event.getPath()).isEqualTo("abc");
   }
 
 }
