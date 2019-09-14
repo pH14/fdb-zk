@@ -36,6 +36,8 @@ public class FdbGetChildrenWithStatOp implements FdbOp<GetChildren2Request, GetC
   public CompletableFuture<Result<GetChildren2Response, KeeperException>> execute(Request zkRequest, Transaction transaction, GetChildren2Request request) {
     List<String> path = FdbPath.toFdbPath(request.getPath());
 
+    fdbWatchManager.checkForWatches(zkRequest.sessionId, zkRequest.cnxn);
+
     try {
       Stat stat = fdbNodeReader.getNodeStat(DirectoryLayer.getDefault().open(transaction, path).join(), transaction).join();
       List<String> childrenDirectoryNames = DirectoryLayer.getDefault().list(transaction, path).join();

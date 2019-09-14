@@ -52,17 +52,17 @@ public class WatchEventChangefeed {
    * 1. Marks that the client is actively watching a given (zkPath, eventType)
    * 2. Subscribes the client to a FDB watch for the ZK Watch Trigger
    */
-  public void setZKChangefeedWatch(Transaction transaction, Watcher watcher, long sessionId, EventType eventType, String zkPath) {
+  public CompletableFuture<Void> setZKChangefeedWatch(Transaction transaction, Watcher watcher, long sessionId, EventType eventType, String zkPath) {
     // register as a ZK watcher for a given path + event type
     transaction.set(getActiveWatchKey(sessionId, zkPath, eventType), EMPTY_VALUE);
 
     // subscribe to the trigger-key, to avoid having to poll for watch events
     CompletableFuture<Void> triggerFuture = transaction.watch(getTriggerKey(sessionId, eventType));
-    triggerFuture.whenComplete((v, e) -> playChangefeed(sessionId, watcher));
+    return triggerFuture.whenComplete((v, e) -> playChangefeed(sessionId, watcher));
   }
 
   /**
-   * * Add an update to the changefeed for a (session, watchEventType, zkPath)
+   * * Add an update to the active-watcher changefeeds for a (session, watchEventType, zkPath)
    * * Triggers all FDB watches for the changefeed
    */
   public void appendToChangefeed(Transaction transaction, EventType eventType, String zkPath) {
@@ -86,15 +86,7 @@ public class WatchEventChangefeed {
     transaction.clear(activeWatches);
   }
 
-  private static byte[] getActiveWatchKey(long sessionId, String zkPath, EventType eventType) {
-    return Tuple.from(ACTIVE_WATCH_NAMESPACE, zkPath, eventType.getIntValue(), sessionId).pack();
-  }
-
-  private static byte[] getTriggerKey(long sessionId, EventType eventType) {
-    return Tuple.from(CHANGEFEED_TRIGGER_NAMESPACE, sessionId, eventType.getIntValue()).pack();
-  }
-
-  private void playChangefeed(long sessionId, Watcher watcher) {
+  public void playChangefeed(long sessionId, Watcher watcher) {
     synchronized (changefeedLocks) {
       changefeedLocks.computeIfAbsent(watcher, x -> new ReentrantLock());
     }
@@ -113,7 +105,6 @@ public class WatchEventChangefeed {
           .join();
 
       if (watchEvents.isEmpty()) {
-        changefeedLocks.get(watcher).unlock();
         return;
       }
 
@@ -139,6 +130,14 @@ public class WatchEventChangefeed {
     } finally {
       changefeedLocks.get(watcher).unlock();
     }
+  }
+
+  private static byte[] getActiveWatchKey(long sessionId, String zkPath, EventType eventType) {
+    return Tuple.from(ACTIVE_WATCH_NAMESPACE, zkPath, eventType.getIntValue(), sessionId).pack();
+  }
+
+  private static byte[] getTriggerKey(long sessionId, EventType eventType) {
+    return Tuple.from(CHANGEFEED_TRIGGER_NAMESPACE, sessionId, eventType.getIntValue()).pack();
   }
 
   private static ChangefeedWatchEvent toWatchEvent(KeyValue keyValue) {

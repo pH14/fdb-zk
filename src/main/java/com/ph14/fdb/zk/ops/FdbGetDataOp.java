@@ -41,6 +41,8 @@ public class FdbGetDataOp implements FdbOp<GetDataRequest, GetDataResponse> {
   public CompletableFuture<Result<GetDataResponse, KeeperException>> execute(Request zkRequest, Transaction transaction, GetDataRequest request) {
     List<String> path = FdbPath.toFdbPath(request.getPath());
 
+    fdbWatchManager.checkForWatches(zkRequest.sessionId, zkRequest.cnxn);
+
     final DirectorySubspace subspace;
     try {
       subspace = DirectoryLayer.getDefault().open(transaction, path).join();

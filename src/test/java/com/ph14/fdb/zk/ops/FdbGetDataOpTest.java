@@ -3,6 +3,7 @@ package com.ph14.fdb.zk.ops;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.KeeperException;
@@ -120,6 +121,25 @@ public class FdbGetDataOpTest extends FdbBaseTest {
 
     event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);
     assertThat(event).isNull();
+  }
+
+  @Test
+  public void itPlaysPendingWatchesBeforeReturning() throws InterruptedException {
+    fdb.run(tr -> {
+      CompletableFuture<Void> fdbWatch = watchEventChangefeed.setZKChangefeedWatch(tr, SERVER_CNXN, REQUEST.sessionId, EventType.NodeCreated, "abc");
+      fdbWatch.cancel(true);
+      watchEventChangefeed.appendToChangefeed(tr, EventType.NodeCreated, "abc");
+      return null;
+    });
+
+    Result<GetDataResponse, KeeperException> result2 = fdb.run(
+        tr -> fdbGetDataOp.execute(REQUEST, tr, new GetDataRequest(BASE_PATH, true))).join();
+    assertThat(result2.isOk()).isFalse();
+
+    WatchedEvent event = SERVER_CNXN.getWatchedEvents().poll(1, TimeUnit.SECONDS);
+    assertThat(event).isNotNull();
+    assertThat(event.getType()).isEqualTo(EventType.NodeCreated);
+    assertThat(event.getPath()).isEqualTo("abc");
   }
 
 }

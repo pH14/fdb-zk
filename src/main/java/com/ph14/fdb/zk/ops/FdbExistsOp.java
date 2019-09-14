@@ -39,6 +39,8 @@ public class FdbExistsOp implements FdbOp<ExistsRequest, ExistsResponse> {
   public CompletableFuture<Result<ExistsResponse, KeeperException>> execute(Request zkRequest, Transaction transaction, ExistsRequest request) {
     List<String> path = FdbPath.toFdbPath(request.getPath());
 
+    fdbWatchManager.checkForWatches(zkRequest.sessionId, zkRequest.cnxn);
+
     final DirectorySubspace subspace;
     try {
       subspace = DirectoryLayer.getDefault().open(transaction, path).join();
