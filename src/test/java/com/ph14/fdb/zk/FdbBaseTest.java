@@ -72,7 +72,7 @@ public class FdbBaseTest {
     fdbExistsOp = new FdbExistsOp(fdbNodeReader, fdbWatchManager);
     fdbGetChildrenWithStatOp = new FdbGetChildrenWithStatOp(fdbNodeReader, fdbWatchManager);
     fdbGetChildrenOp = new FdbGetChildrenOp(fdbGetChildrenWithStatOp);
-    fdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager);
+    fdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager, fdbEphemeralNodeManager);
 
     fdb.run(tr -> {
       DirectoryLayer.getDefault().removeIfExists(tr, Collections.singletonList(FdbPath.ROOT_PATH)).join();

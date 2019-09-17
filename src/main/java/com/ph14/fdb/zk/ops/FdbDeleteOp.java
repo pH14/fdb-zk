@@ -29,6 +29,7 @@ import com.ph14.fdb.zk.layer.FdbNodeWriter;
 import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 import com.ph14.fdb.zk.layer.StatKey;
+import com.ph14.fdb.zk.layer.ephemeral.FdbEphemeralNodeManager;
 
 public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
 
@@ -39,14 +40,17 @@ public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
   private final FdbNodeReader fdbNodeReader;
   private final FdbNodeWriter fdbNodeWriter;
   private final FdbWatchManager fdbWatchManager;
+  private final FdbEphemeralNodeManager fdbEphemeralNodeManager;
 
   @Inject
   public FdbDeleteOp(FdbNodeReader fdbNodeReader,
                      FdbNodeWriter fdbNodeWriter,
-                     FdbWatchManager fdbWatchManager) {
+                     FdbWatchManager fdbWatchManager,
+                     FdbEphemeralNodeManager fdbEphemeralNodeManager) {
     this.fdbNodeReader = fdbNodeReader;
     this.fdbNodeWriter = fdbNodeWriter;
     this.fdbWatchManager = fdbWatchManager;
+    this.fdbEphemeralNodeManager = fdbEphemeralNodeManager;
   }
 
   @Override
@@ -81,7 +85,7 @@ public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
     parentNodeSubspace = DirectoryLayer.getDefault().open(transaction, FdbPath.toFdbParentPath(request.getPath())).join();
 
     // could eliminate this read by using atomic ops and using endianness correctly
-    parentStat = fdbNodeReader.getNodeStat(parentNodeSubspace, transaction, StatKey.CVERSION, StatKey.NUM_CHILDREN).join();
+    parentStat = fdbNodeReader.getNodeStat(parentNodeSubspace, transaction, StatKey.CVERSION, StatKey.NUM_CHILDREN, StatKey.EPHEMERAL_OWNER).join();
 
     fdbNodeWriter.writeStat(transaction, parentNodeSubspace,
         ImmutableMap.of(
@@ -89,6 +93,10 @@ public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
             StatKey.CVERSION, parentStat.getCversion() + 1L,
             StatKey.NUM_CHILDREN, parentStat.getNumChildren() - 1L
         ));
+
+    if (stat.getEphemeralOwner() != 0) {
+      fdbEphemeralNodeManager.removeNode(transaction, request.getPath(), zkRequest.sessionId);
+    }
 
     nodeSubspace.remove(transaction).join();
 

@@ -41,6 +41,10 @@ public class FdbEphemeralNodeManager {
                 kv -> Tuple.fromBytes(kv.getKey()).getString(2)));
   }
 
+  public void removeNode(Transaction transaction, String zkPath, long sessionId) {
+    transaction.clear(Tuple.from(ephemeralNodeSubspace, sessionId, zkPath).pack());
+  }
+
   public void clearEphemeralNodesForSession(Transaction transaction, long sessionId) {
     transaction.clear(Range.startsWith(Tuple.from(ephemeralNodeSubspace, sessionId).pack()));
   }

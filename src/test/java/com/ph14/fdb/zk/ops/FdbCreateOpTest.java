@@ -106,6 +106,47 @@ public class FdbCreateOpTest extends FdbBaseTest {
   }
 
   @Test
+  public void itRecordsEphemeralNodes() {
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(
+            REQUEST, tr,
+            new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), CreateMode.EPHEMERAL.toFlag())).join());
+    assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
+
+    result = fdb.run(
+        tr -> fdbCreateOp.execute(
+            REQUEST, tr,
+            new CreateRequest("/a-persistent-node", new byte[0], Collections.emptyList(), CreateMode.PERSISTENT.toFlag())).join());
+    assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse("/a-persistent-node"));
+
+    result = fdb.run(
+        tr -> fdbCreateOp.execute(
+            REQUEST, tr,
+            new CreateRequest("/a-persistent-node/something-else", new byte[0], Collections.emptyList(), CreateMode.EPHEMERAL.toFlag())).join());
+    assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse("/a-persistent-node/something-else"));
+
+    Iterable<String> ephemeralNodePaths = fdb.run(tr -> fdbEphemeralNodeManager.getEphemeralNodeZkPaths(tr, REQUEST.sessionId)).join();
+    assertThat(ephemeralNodePaths).containsExactlyInAnyOrder(BASE_PATH, "/a-persistent-node/something-else");
+  }
+
+  @Test
+  public void itFailsToCreateChildNodeOfEphemeral() {
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(
+            REQUEST, tr,
+            new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), CreateMode.EPHEMERAL.toFlag())).join());
+
+    assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
+
+    result = fdb.run(
+        tr -> fdbCreateOp.execute(
+            REQUEST, tr,
+            new CreateRequest(BASE_PATH + "/abc", new byte[0], Collections.emptyList(), CreateMode.PERSISTENT_SEQUENTIAL.toFlag())).join());
+
+    assertThat(result.unwrapErrOrElseThrow().code()).isEqualTo(Code.NOCHILDRENFOREPHEMERALS);
+  }
+
+  @Test
   public void itTriggersWatchForNodeCreation() throws InterruptedException {
     CountDownLatch countDownLatch = new CountDownLatch(1);
     Watcher watcher = event -> {
