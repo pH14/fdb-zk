@@ -1,11 +1,13 @@
 package com.ph14.fdb.zk.ops;
 
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.NoChildrenForEphemeralsException;
 import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.proto.CreateRequest;
@@ -28,6 +30,7 @@ import com.ph14.fdb.zk.layer.FdbNodeWriter;
 import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 import com.ph14.fdb.zk.layer.StatKey;
+import com.ph14.fdb.zk.layer.ephemeral.FdbEphemeralNodeManager;
 
 public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
 
@@ -36,14 +39,17 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
   private final FdbNodeReader fdbNodeReader;
   private final FdbNodeWriter fdbNodeWriter;
   private final FdbWatchManager fdbWatchManager;
+  private final FdbEphemeralNodeManager fdbEphemeralNodeManager;
 
   @Inject
   public FdbCreateOp(FdbNodeReader fdbNodeReader,
                      FdbNodeWriter fdbNodeWriter,
-                     FdbWatchManager fdbWatchManager) {
+                     FdbWatchManager fdbWatchManager,
+                     FdbEphemeralNodeManager fdbEphemeralNodeManager) {
     this.fdbNodeReader = fdbNodeReader;
     this.fdbNodeWriter = fdbNodeWriter;
     this.fdbWatchManager = fdbWatchManager;
+    this.fdbEphemeralNodeManager = fdbEphemeralNodeManager;
   }
 
   @Override
@@ -71,9 +77,9 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
       }
     }
 
-    // ephemeral node: disallow children nodes
-    // disallow creation if the heartbeat has been updated by owner recently enough
-    // otherwise allow overwriting of ephemeral node namespace in case client died before removing it
+    if (parentStat.getEphemeralOwner() != 0) {
+      return CompletableFuture.completedFuture(Result.err(new NoChildrenForEphemeralsException()));
+    }
 
     final String finalZkPath;
     final FdbNode fdbNode;
@@ -86,7 +92,9 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
         finalZkPath = request.getPath();
       }
 
-      fdbNode = new FdbNode(finalZkPath, null, request.getData(), request.getAcl());
+      Optional<Long> ephemeralOwner = createMode.isEphemeral() ? Optional.of(zkRequest.sessionId) : Optional.empty();
+
+      fdbNode = new FdbNode(finalZkPath, null, request.getData(), request.getAcl(), ephemeralOwner);
       subspace = DirectoryLayer.getDefault().create(transaction, FdbPath.toFdbPath(finalZkPath)).join();
     } catch (CompletionException e) {
       if (e.getCause() instanceof DirectoryAlreadyExistsException) {
@@ -98,6 +106,10 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
     }
 
     fdbNodeWriter.createNewNode(transaction, subspace, fdbNode);
+
+    if (createMode.isEphemeral()) {
+      fdbEphemeralNodeManager.addEphemeralNode(transaction, finalZkPath, zkRequest.sessionId);
+    }
 
     // need atomic ops / little-endian storage if we want multis to work
     fdbNodeWriter.writeStat(

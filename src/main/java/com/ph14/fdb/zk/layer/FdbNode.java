@@ -1,8 +1,8 @@
 package com.ph14.fdb.zk.layer;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
@@ -15,12 +15,18 @@ public class FdbNode {
   private final Stat stat;
   private final byte[] data;
   private final List<ACL> acls;
+  private final Optional<Long> ephemeralSessionId;
 
   public FdbNode(String zkPath, Stat stat, byte[] data, List<ACL> acls) {
+    this(zkPath, stat, data, acls, Optional.empty());
+  }
+
+  public FdbNode(String zkPath, Stat stat, byte[] data, List<ACL> acls, Optional<Long> ephemeralSessionId) {
     this.zkPath = zkPath;
     this.stat = stat;
     this.data = data;
     this.acls = acls;
+    this.ephemeralSessionId = ephemeralSessionId;
   }
 
   public String getZkPath() {
@@ -43,6 +49,10 @@ public class FdbNode {
     return acls;
   }
 
+  public Optional<Long> getEphemeralSessionId() {
+    return ephemeralSessionId;
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -52,16 +62,16 @@ public class FdbNode {
       final FdbNode that = (FdbNode) obj;
       return Objects.equals(this.getZkPath(), that.getZkPath())
           && Objects.equals(this.getStat(), that.getStat())
-          && Arrays.equals(this.getData(), that.getData())
-          && Objects.equals(this.getAcls(), that.getAcls());
+          && Objects.equals(this.getData(), that.getData())
+          && Objects.equals(this.getAcls(), that.getAcls())
+          && Objects.equals(this.getEphemeralSessionId(), that.getEphemeralSessionId());
     }
     return false;
   }
 
   @Override
-  @SuppressWarnings("ArrayHashCode")
   public int hashCode() {
-    return Objects.hash(getZkPath(), getStat(), getData(), getAcls());
+    return Objects.hash(getZkPath(), getStat(), getData(), getAcls(), getEphemeralSessionId());
   }
 
   @Override
@@ -71,6 +81,7 @@ public class FdbNode {
         .add("stat", stat)
         .add("data", data)
         .add("acls", acls)
+        .add("ephemeralSessionId", ephemeralSessionId)
         .toString();
   }
 }

@@ -24,7 +24,9 @@ import com.apple.foundationdb.tuple.Versionstamp;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 
+@Singleton
 public class WatchEventChangefeed {
 
   private static final String ACTIVE_WATCH_NAMESPACE = "fdb-zk-watch-active";

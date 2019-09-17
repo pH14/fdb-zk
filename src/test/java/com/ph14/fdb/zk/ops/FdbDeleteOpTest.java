@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
 
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.OpResult.DeleteResult;
@@ -12,6 +13,8 @@ import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.DeleteRequest;
 import org.apache.zookeeper.proto.ExistsRequest;
 import org.apache.zookeeper.proto.ExistsResponse;
+import org.apache.zookeeper.proto.GetChildrenRequest;
+import org.apache.zookeeper.proto.GetChildrenResponse;
 import org.apache.zookeeper.proto.SetDataRequest;
 import org.junit.Test;
 
@@ -103,7 +106,7 @@ public class FdbDeleteOpTest extends FdbBaseTest {
     assertThat(exists.unwrapOrElseThrow().getStat().getNumChildren()).isEqualTo(1);
     long initialPzxid = exists.unwrapOrElseThrow().getStat().getPzxid();
 
-    FdbDeleteOp throwingFdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, new ThrowingWatchManager(new WatchEventChangefeed(fdb)));
+    FdbDeleteOp throwingFdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, new ThrowingWatchManager(new WatchEventChangefeed(fdb)), fdbEphemeralNodeManager);
     assertThatThrownBy(() -> fdb.run(tr -> throwingFdbDeleteOp.execute(REQUEST, tr, new DeleteRequest(SUBPATH, 0))))
         .hasCauseInstanceOf(RuntimeException.class);
 
@@ -111,6 +114,25 @@ public class FdbDeleteOpTest extends FdbBaseTest {
     assertThat(exists.unwrapOrElseThrow().getStat().getCversion()).isEqualTo(1);
     assertThat(exists.unwrapOrElseThrow().getStat().getNumChildren()).isEqualTo(1);
     assertThat(exists.unwrapOrElseThrow().getStat().getPzxid()).isEqualTo(initialPzxid);
+  }
+
+  @Test
+  public void itRemovesEphemeralNodesFromManager() {
+    fdb.run(tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), CreateMode.PERSISTENT.toFlag()))).join();
+    fdb.run(tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(SUBPATH, new byte[0], Collections.emptyList(), CreateMode.EPHEMERAL.toFlag()))).join();
+
+    Result<GetChildrenResponse, KeeperException> children = fdb.run(tr -> fdbGetChildrenOp.execute(REQUEST, tr, new GetChildrenRequest(BASE_PATH, false)).join());
+    assertThat(children.isOk()).isTrue();
+    assertThat(children.unwrapOrElseThrow().getChildren()).containsExactly("bar");
+
+    fdb.run(tr -> fdbDeleteOp.execute(REQUEST, tr, new DeleteRequest(SUBPATH, -1))).join();
+
+    children = fdb.run(tr -> fdbGetChildrenOp.execute(REQUEST, tr, new GetChildrenRequest(BASE_PATH, false)).join());
+    assertThat(children.isOk()).isTrue();
+    assertThat(children.unwrapOrElseThrow().getChildren()).isEmpty();
+
+    Iterable<String> ephemeralNodePaths = fdb.run(tr -> fdbEphemeralNodeManager.getEphemeralNodeZkPaths(tr, REQUEST.sessionId)).join();
+    assertThat(ephemeralNodePaths).isEmpty();
   }
 
 }
