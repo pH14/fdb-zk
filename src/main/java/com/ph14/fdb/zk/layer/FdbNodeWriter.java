@@ -101,7 +101,7 @@ public class FdbNodeWriter {
 
   private void writeStat(Transaction transaction, Subspace nodeSubspace, FdbNode fdbNode) {
     if (fdbNode.getStat() == null) {
-      writeStatForNewNode(transaction, nodeSubspace, fdbNode.getData(), Optional.empty());
+      writeStatForNewNode(transaction, nodeSubspace, fdbNode.getData(), fdbNode.getEphemeralSessionId());
     } else {
       writeStatFromExistingNode(transaction, nodeSubspace, fdbNode);
     }
