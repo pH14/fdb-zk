@@ -18,6 +18,7 @@ import com.apple.foundationdb.tuple.ByteArrayUtil;
 import com.apple.foundationdb.tuple.Tuple;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
@@ -75,6 +76,8 @@ public class CoordinatingClock implements Closeable {
   }
 
   public CoordinatingClock start() {
+    Preconditions.checkState(!isClosed.get(), "cannot start clock, already closed");
+
     executorService.submit(() -> {
       while (!isClosed.get()) {
         keepTime();

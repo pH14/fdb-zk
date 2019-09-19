@@ -169,6 +169,10 @@ public class CoordinatingClockTest {
     assertThat(wasLeader.get() ^ clockTwoWasLeader.get() ^ clockThreeWasLeader.get()).isTrue();
     assertThat(coordinatingClockOne.getCurrentTick()).hasValue(1500);
 
+    wasLeader.set(false);
+    clockTwoWasLeader.set(false);
+    clockThreeWasLeader.set(false);
+
     clocks.stream()
         .map(clock -> CompletableFuture.runAsync(clock::runOnce))
         .collect(Collectors.toList())
