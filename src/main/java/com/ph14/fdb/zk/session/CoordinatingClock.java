@@ -1,6 +1,8 @@
 package com.ph14.fdb.zk.session;
 
 import java.io.Closeable;
+import java.time.Clock;
+import java.util.OptionalLong;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -13,6 +15,8 @@ import com.apple.foundationdb.Database;
 import com.apple.foundationdb.FDBException;
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.tuple.ByteArrayUtil;
+import com.apple.foundationdb.tuple.Tuple;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -32,8 +36,11 @@ public class CoordinatingClock implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(CoordinatingClock.class);
 
+  static final String PREFIX = "fdb-zk-clock";
+  static final byte[] KEY_PREFIX = Tuple.from(PREFIX).pack();
+
   // this should be configurable
-  private static final long TICK_TIME_MILLIS = 1000;
+  private static final long DEFAULT_TICK_MILLIS = 1000;
 
   private final Database fdb;
   private final ExecutorService executorService;
@@ -41,8 +48,10 @@ public class CoordinatingClock implements Closeable {
   private final String clockName;
   private final byte[] clockKey;
   private final Runnable onElection;
+  private final Clock clock;
+  private final long tickMillis;
 
-  private CoordinatingClock(Database fdb, String clockName, Runnable onElection) {
+  private CoordinatingClock(Database fdb, String clockName, Runnable onElection, Clock clock, OptionalLong tickMillis) {
     this.fdb = fdb;
 
     this.executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder()
@@ -51,18 +60,45 @@ public class CoordinatingClock implements Closeable {
         .build());
 
     this.clockName = clockName;
-    this.clockKey = clockName.getBytes(Charsets.UTF_8);
+    this.clockKey = Tuple.from(PREFIX, clockName.getBytes(Charsets.UTF_8)).pack();
     this.onElection = onElection;
+    this.clock = clock;
+    this.tickMillis = tickMillis.orElse(DEFAULT_TICK_MILLIS);
+  }
 
+  public static CoordinatingClock from(Database fdb, String clockName, Runnable onElection) {
+    return new CoordinatingClock(fdb, clockName, onElection, Clock.systemUTC(), OptionalLong.empty());
+  }
+
+  public static CoordinatingClock from(Database fdb, String clockName, Runnable onElection, Clock clock, OptionalLong tickMillis) {
+    return new CoordinatingClock(fdb, clockName, onElection, clock, tickMillis);
+  }
+
+  public CoordinatingClock start() {
     executorService.submit(() -> {
       while (!isClosed.get()) {
         keepTime();
       }
     });
+
+    return this;
   }
 
-  public static CoordinatingClock start(Database fdb, String clockName, Runnable onElection) {
-    return new CoordinatingClock(fdb, clockName, onElection);
+  public OptionalLong getCurrentTick() {
+    return fdb.read(rt -> {
+      byte[] value = rt.get(clockKey).join();
+
+      if (value != null) {
+        return OptionalLong.of(ByteArrayUtil.decodeInt(value));
+      } else {
+        return OptionalLong.empty();
+      }
+    });
+  }
+
+  @VisibleForTesting
+  void runOnce() {
+    keepTime();
   }
 
   @Override
@@ -78,26 +114,25 @@ public class CoordinatingClock implements Closeable {
   }
 
   private void keepTime() {
-    try {
-      Transaction transaction = fdb.createTransaction();
+    final long winningTick;
 
+    try (Transaction transaction = fdb.createTransaction()) {
       byte[] currentTickToWaitFor = transaction.get(clockKey).join();
 
-      long now = System.currentTimeMillis();
-      long nowRounded = TICK_TIME_MILLIS * (now / TICK_TIME_MILLIS);
+      long now = clock.millis();
 
       if (currentTickToWaitFor == null) {
-        transaction.set(clockKey, ByteArrayUtil.encodeInt(nowRounded + TICK_TIME_MILLIS));
+        transaction.set(clockKey, ByteArrayUtil.encodeInt(roundToTick(now + tickMillis)));
         transaction.commit().join();
         return;
       }
 
-      long nextPersistedTick = ByteArrayUtil.decodeInt(currentTickToWaitFor) + TICK_TIME_MILLIS;
+      long nextPersistedTick = roundToTick(ByteArrayUtil.decodeInt(currentTickToWaitFor) + tickMillis);
 
       boolean mustRetryBeforeEligibleForLeader = false;
       // our clock is ahead of the next tick, we'll try to advance it further
       if (now > nextPersistedTick) {
-        nextPersistedTick += TICK_TIME_MILLIS;
+        nextPersistedTick = roundToTick(now + tickMillis);
         mustRetryBeforeEligibleForLeader = true;
       } else {
         // we're behind, so wait until we think our real-time is the next tick
@@ -106,6 +141,8 @@ public class CoordinatingClock implements Closeable {
 
       transaction.set(clockKey, ByteArrayUtil.encodeInt(nextPersistedTick));
       transaction.commit().join();
+
+      winningTick = nextPersistedTick;
 
       if (mustRetryBeforeEligibleForLeader) {
         return;
@@ -129,9 +166,13 @@ public class CoordinatingClock implements Closeable {
     }
 
     // we won! by which we mean we didn't get a conflict
-    LOG.info("elected leader of {} clock @ {}", clockName, System.currentTimeMillis());
+    LOG.info("elected leader of {} clock @ {}", clockName, winningTick);
 
     onElection.run();
+  }
+
+  private long roundToTick(long millis) {
+    return tickMillis * (millis / tickMillis);
   }
 
 }
