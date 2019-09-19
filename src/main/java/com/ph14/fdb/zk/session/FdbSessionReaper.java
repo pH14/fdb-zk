@@ -4,17 +4,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.zookeeper.Watcher.Event.EventType;
+
 import com.apple.foundationdb.Database;
 import com.apple.foundationdb.async.AsyncUtil;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.ph14.fdb.zk.layer.FdbNodeReader;
 import com.ph14.fdb.zk.layer.FdbNodeWriter;
+import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.changefeed.WatchEventChangefeed;
 import com.ph14.fdb.zk.layer.ephemeral.FdbEphemeralNodeManager;
 
 @Singleton
-public class FdbSessionCleanup {
+public class FdbSessionReaper {
 
   private final Database fdb;
   private final WatchEventChangefeed watchEventChangefeed;
@@ -23,11 +26,11 @@ public class FdbSessionCleanup {
   private final FdbEphemeralNodeManager fdbEphemeralNodeManager;
 
   @Inject
-  public FdbSessionCleanup(Database fdb,
-                           WatchEventChangefeed watchEventChangefeed,
-                           FdbNodeWriter fdbNodeWriter,
-                           FdbNodeReader fdbNodeReader,
-                           FdbEphemeralNodeManager fdbEphemeralNodeManager) {
+  public FdbSessionReaper(Database fdb,
+                          WatchEventChangefeed watchEventChangefeed,
+                          FdbNodeWriter fdbNodeWriter,
+                          FdbNodeReader fdbNodeReader,
+                          FdbEphemeralNodeManager fdbEphemeralNodeManager) {
     this.fdb = fdb;
     this.watchEventChangefeed = watchEventChangefeed;
     this.fdbNodeWriter = fdbNodeWriter;
@@ -35,7 +38,7 @@ public class FdbSessionCleanup {
     this.fdbEphemeralNodeManager = fdbEphemeralNodeManager;
   }
 
-  public CompletableFuture<Void> removeAllSessionEntries(long sessionId) {
+  public CompletableFuture<Void> removeAllSessionData(long sessionId) {
     return fdb.run(tr -> {
       List<CompletableFuture<Void>> deletions = new ArrayList<>();
 
@@ -45,6 +48,9 @@ public class FdbSessionCleanup {
         deletions.add(
             fdbNodeReader.getNodeDirectory(tr, zkPath)
                 .thenCompose(nodeDirectory -> fdbNodeWriter.deleteNodeAsync(tr, nodeDirectory)));
+        // clearing the directory + handling changefeeds should share code with DeleteOp
+        deletions.add(watchEventChangefeed.appendToChangefeed(tr, EventType.NodeDeleted, zkPath));
+        deletions.add(watchEventChangefeed.appendToChangefeed(tr, EventType.NodeChildrenChanged, FdbPath.toZkParentPath(zkPath)));
       }
 
       fdbEphemeralNodeManager.clearEphemeralNodesForSession(tr, sessionId);

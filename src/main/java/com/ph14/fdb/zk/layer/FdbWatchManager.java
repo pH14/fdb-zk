@@ -22,19 +22,19 @@ public class FdbWatchManager {
   }
 
   public void triggerNodeCreatedWatch(Transaction transaction, String zkPath) {
-    watchChangefeed.appendToChangefeed(transaction, EventType.NodeCreated, zkPath);
+    watchChangefeed.appendToChangefeed(transaction, EventType.NodeCreated, zkPath).join();
   }
 
   public void triggerNodeUpdatedWatch(Transaction transaction, String zkPath) {
-    watchChangefeed.appendToChangefeed(transaction, EventType.NodeDataChanged, zkPath);
+    watchChangefeed.appendToChangefeed(transaction, EventType.NodeDataChanged, zkPath).join();
   }
 
   public void triggerNodeDeletedWatch(Transaction transaction, String zkPath) {
-    watchChangefeed.appendToChangefeed(transaction, EventType.NodeDeleted, zkPath);
+    watchChangefeed.appendToChangefeed(transaction, EventType.NodeDeleted, zkPath).join();
   }
 
   public void triggerNodeChildrenWatch(Transaction transaction, String zkPath) {
-    watchChangefeed.appendToChangefeed(transaction, EventType.NodeChildrenChanged, zkPath);
+    watchChangefeed.appendToChangefeed(transaction, EventType.NodeChildrenChanged, zkPath).join();
   }
 
   public void addNodeCreatedWatch(Transaction transaction, String zkPath, Watcher watcher, long sessionId) {
