@@ -67,25 +67,28 @@ public class WatchEventChangefeed {
    * * Add an update to the active-watcher changefeeds for a (session, watchEventType, zkPath)
    * * Triggers all FDB watches for the changefeed
    */
-  public void appendToChangefeed(Transaction transaction, EventType eventType, String zkPath) {
+  public CompletableFuture<Void> appendToChangefeed(Transaction transaction, EventType eventType, String zkPath) {
     Range activeWatches = Range.startsWith(Tuple.from(ACTIVE_WATCH_NAMESPACE, zkPath, eventType.getIntValue()).pack());
-    List<KeyValue> keyValues = transaction.getRange(activeWatches).asList().join();
 
-    for (KeyValue keyValue : keyValues) {
-      long sessionId = Tuple.fromBytes(keyValue.getKey()).getLong(3);
+    return transaction.getRange(activeWatches).asList()
+        .thenApply(keyValues -> {
+          for (KeyValue keyValue : keyValues) {
+            long sessionId = Tuple.fromBytes(keyValue.getKey()).getLong(3);
 
-      Tuple changefeedKey = Tuple.from(CHANGEFEED_NAMESPACE, sessionId, Versionstamp.incomplete(), eventType.getIntValue());
-      // append the event to the changefeed of each ZK watcher
-      transaction.mutate(MutationType.SET_VERSIONSTAMPED_KEY, changefeedKey.packWithVersionstamp(), Tuple.from(zkPath).pack());
+            Tuple changefeedKey = Tuple.from(CHANGEFEED_NAMESPACE, sessionId, Versionstamp.incomplete(), eventType.getIntValue());
+            // append the event to the changefeed of each ZK watcher
+            transaction.mutate(MutationType.SET_VERSIONSTAMPED_KEY, changefeedKey.packWithVersionstamp(), Tuple.from(zkPath).pack());
 
-      // update the watched trigger-key for each ZK watcher, so they know to check their changefeeds for updates
-      transaction.mutate(
-          MutationType.SET_VERSIONSTAMPED_VALUE,
-          Tuple.from(CHANGEFEED_TRIGGER_NAMESPACE, sessionId, eventType.getIntValue()).pack(),
-          Tuple.from(Versionstamp.incomplete()).packWithVersionstamp());
-    }
+            // update the watched trigger-key for each ZK watcher, so they know to check their changefeeds for updates
+            transaction.mutate(
+                MutationType.SET_VERSIONSTAMPED_VALUE,
+                Tuple.from(CHANGEFEED_TRIGGER_NAMESPACE, sessionId, eventType.getIntValue()).pack(),
+                Tuple.from(Versionstamp.incomplete()).packWithVersionstamp());
+          }
 
-    transaction.clear(activeWatches);
+          transaction.clear(activeWatches);
+          return null;
+        });
   }
 
   public void playChangefeed(long sessionId, Watcher watcher) {
@@ -132,6 +135,23 @@ public class WatchEventChangefeed {
     } finally {
       changefeedLocks.get(watcher).unlock();
     }
+  }
+
+  public CompletableFuture<Void> clearAllWatchesForSession(Transaction transaction, long sessionId) {
+    Range allAvailableZKWatchEvents = Range.startsWith(Tuple.from(CHANGEFEED_NAMESPACE, sessionId).pack());
+
+    return transaction.getRange(allAvailableZKWatchEvents).asList()
+        .thenApply(kvs -> {
+          kvs.stream()
+              .map(WatchEventChangefeed::toWatchEvent)
+              .forEach(watchEvent -> {
+                transaction.clear(getActiveWatchKey(sessionId, watchEvent.getZkPath(), watchEvent.getEventType()));
+                transaction.clear(getTriggerKey(sessionId, watchEvent.getEventType()));
+              });
+
+          transaction.clear(allAvailableZKWatchEvents);
+          return null;
+        });
   }
 
   private static byte[] getActiveWatchKey(long sessionId, String zkPath, EventType eventType) {

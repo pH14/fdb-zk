@@ -111,7 +111,7 @@ public class FdbGetChildrenWithStatOpTest extends FdbBaseTest {
     fdb.run(tr -> {
       CompletableFuture<Void> fdbWatch = watchEventChangefeed.setZKChangefeedWatch(tr, SERVER_CNXN, REQUEST.sessionId, EventType.NodeCreated, "abc");
       fdbWatch.cancel(true);
-      watchEventChangefeed.appendToChangefeed(tr, EventType.NodeCreated, "abc");
+      watchEventChangefeed.appendToChangefeed(tr, EventType.NodeCreated, "abc").join();
       return null;
     });
 

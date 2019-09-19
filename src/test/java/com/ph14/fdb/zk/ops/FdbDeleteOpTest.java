@@ -4,12 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.OpResult.DeleteResult;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.proto.CreateRequest;
+import org.apache.zookeeper.proto.CreateResponse;
 import org.apache.zookeeper.proto.DeleteRequest;
 import org.apache.zookeeper.proto.ExistsRequest;
 import org.apache.zookeeper.proto.ExistsResponse;
@@ -133,6 +138,55 @@ public class FdbDeleteOpTest extends FdbBaseTest {
 
     Iterable<String> ephemeralNodePaths = fdb.run(tr -> fdbEphemeralNodeManager.getEphemeralNodeZkPaths(tr, REQUEST.sessionId)).join();
     assertThat(ephemeralNodePaths).isEmpty();
+  }
+
+  @Test
+  public void itTriggersWatchForNodeDeletion() throws InterruptedException {
+    CountDownLatch countDownLatch = new CountDownLatch(1);
+    Watcher watcher = event -> {
+      assertThat(event.getType()).isEqualTo(EventType.NodeDeleted);
+      assertThat(event.getPath()).isEqualTo(BASE_PATH);
+      countDownLatch.countDown();
+    };
+
+    fdb.run(tr -> {
+      fdbWatchManager.addNodeDeletedWatch(tr, BASE_PATH, watcher, REQUEST.sessionId);
+      return null;
+    });
+
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0))).join();
+
+    assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
+    assertThat(SERVER_CNXN.getWatchedEvents().peek()).isNull();
+
+    fdb.run(tr -> fdbDeleteOp.execute(REQUEST, tr, new DeleteRequest(BASE_PATH, -1))).join();
+    assertThat(countDownLatch.await(2, TimeUnit.SECONDS)).isTrue();
+  }
+
+  @Test
+  public void itTriggersWatchesOnParentNodeDeletion() throws InterruptedException {
+    CountDownLatch countDownLatch = new CountDownLatch(1);
+
+    Watcher watcher = event -> {
+      assertThat(event.getType()).isEqualTo(EventType.NodeChildrenChanged);
+      assertThat(event.getPath()).isEqualTo("/");
+      countDownLatch.countDown();
+    };
+
+    Result<CreateResponse, KeeperException> result = fdb.run(
+        tr -> fdbCreateOp.execute(REQUEST, tr, new CreateRequest(BASE_PATH, new byte[0], Collections.emptyList(), 0))).join();
+
+    assertThat(result.unwrapOrElseThrow()).isEqualTo(new CreateResponse(BASE_PATH));
+    assertThat(SERVER_CNXN.getWatchedEvents().peek()).isNull();
+
+    fdb.run(tr -> {
+      fdbWatchManager.addNodeChildrenWatch(tr, "/", watcher, REQUEST.sessionId);
+      return null;
+    });
+
+    fdb.run(tr -> fdbDeleteOp.execute(REQUEST, tr, new DeleteRequest(BASE_PATH, -1))).join();
+    assertThat(countDownLatch.await(2, TimeUnit.SECONDS)).isTrue();
   }
 
 }

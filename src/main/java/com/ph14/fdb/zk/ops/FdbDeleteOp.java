@@ -98,10 +98,10 @@ public class FdbDeleteOp implements FdbOp<DeleteRequest, DeleteResult> {
       fdbEphemeralNodeManager.removeNode(transaction, request.getPath(), zkRequest.sessionId);
     }
 
-    nodeSubspace.remove(transaction).join();
+    fdbNodeWriter.deleteNodeAsync(transaction, nodeSubspace).join();
 
     fdbWatchManager.triggerNodeDeletedWatch(transaction, request.getPath());
-    fdbWatchManager.triggerNodeChildrenWatch(transaction, request.getPath());
+    fdbWatchManager.triggerNodeChildrenWatch(transaction, FdbPath.toZkParentPath(request.getPath()));
 
     return CompletableFuture.completedFuture(Result.ok(new DeleteResult()));
   }
