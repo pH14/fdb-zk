@@ -134,6 +134,23 @@ public class WatchEventChangefeed {
     }
   }
 
+  public CompletableFuture<Void> clearAllWatchesForSession(Transaction transaction, long sessionId) {
+    Range allAvailableZKWatchEvents = Range.startsWith(Tuple.from(CHANGEFEED_NAMESPACE, sessionId).pack());
+
+    return transaction.getRange(allAvailableZKWatchEvents).asList()
+        .thenApply(kvs -> {
+          kvs.stream()
+              .map(WatchEventChangefeed::toWatchEvent)
+              .forEach(watchEvent -> {
+                transaction.clear(getActiveWatchKey(sessionId, watchEvent.getZkPath(), watchEvent.getEventType()));
+                transaction.clear(getTriggerKey(sessionId, watchEvent.getEventType()));
+              });
+
+          transaction.clear(allAvailableZKWatchEvents);
+          return null;
+        });
+  }
+
   private static byte[] getActiveWatchKey(long sessionId, String zkPath, EventType eventType) {
     return Tuple.from(ACTIVE_WATCH_NAMESPACE, zkPath, eventType.getIntValue(), sessionId).pack();
   }

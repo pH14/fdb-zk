@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.zookeeper.data.ACL;
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import com.apple.foundationdb.KeyValue;
 import com.apple.foundationdb.MutationType;
 import com.apple.foundationdb.Range;
 import com.apple.foundationdb.Transaction;
+import com.apple.foundationdb.directory.DirectorySubspace;
 import com.apple.foundationdb.subspace.Subspace;
 import com.apple.foundationdb.tuple.ByteArrayUtil;
 import com.apple.foundationdb.tuple.Tuple;
@@ -95,8 +97,8 @@ public class FdbNodeWriter {
     }
   }
 
-  public void deleteNode(Transaction transaction, Subspace nodeSubspace) {
-    transaction.clear(nodeSubspace.range());
+  public CompletableFuture<Void> deleteNodeAsync(Transaction transaction, DirectorySubspace nodeSubspace) {
+    return nodeSubspace.remove(transaction);
   }
 
   private void writeStat(Transaction transaction, Subspace nodeSubspace, FdbNode fdbNode) {

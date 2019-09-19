@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.apple.foundationdb.KeyValue;
 import com.apple.foundationdb.Transaction;
 import com.apple.foundationdb.async.AsyncUtil;
+import com.apple.foundationdb.directory.DirectoryLayer;
 import com.apple.foundationdb.directory.DirectorySubspace;
 import com.apple.foundationdb.subspace.Subspace;
 import com.apple.foundationdb.tuple.ByteArrayUtil;
@@ -31,6 +32,10 @@ public class FdbNodeReader {
 
   @Inject
   public FdbNodeReader() {
+  }
+
+  public CompletableFuture<DirectorySubspace> getNodeDirectory(Transaction transaction, String zkPath) {
+    return DirectoryLayer.getDefault().open(transaction, FdbPath.toFdbPath(zkPath));
   }
 
   public CompletableFuture<FdbNode> getNode(DirectorySubspace nodeSubspace, Transaction transaction) {
