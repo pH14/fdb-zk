@@ -29,7 +29,7 @@
     <dependency>
       <groupId>org.foundationdb</groupId>
       <artifactId>fdb-java</artifactId>
-      <version>6.0.15</version>
+      <version>6.1.8</version>
     </dependency>
     <dependency>
       <groupId>org.apache.zookeeper</groupId>
@@ -45,6 +45,16 @@
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
       <version>4.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-client</artifactId>
+      <version>4.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-recipes</artifactId>
+      <version>4.2.0</version>
     </dependency>
 
     <dependency>

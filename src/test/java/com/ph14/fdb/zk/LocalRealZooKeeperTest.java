@@ -32,7 +32,6 @@ public class LocalRealZooKeeperTest {
     standaloneServerFactory.configure(new InetSocketAddress(clientPort), numConnections);
 
     standaloneServerFactory.startup(server); // start the server.
-    standaloneServerFactory.run();
 
     ZooKeeper zooKeeper = new ZooKeeper("localhost:21818", 10000, new Watcher() {
       public void process(WatchedEvent event) {
@@ -55,9 +54,9 @@ public class LocalRealZooKeeperTest {
 
     String root = "/" + String.valueOf(System.currentTimeMillis());
 
-    zooKeeper.create(root, "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
-    zooKeeper.create(root, "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
-    zooKeeper.create(root, "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+    zooKeeper.create(root, "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+    zooKeeper.create(root + "/abc", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+//    zooKeeper.create(root, "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
 //    LOG.info("CVersion before anything: {}", zooKeeper.exists(root, false).getCversion());
 //    LOG.info("PZXID before anything: {}", zooKeeper.exists(root, false).getPzxid());
 //    zooKeeper.create(root + "/1", "hello".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
@@ -67,10 +66,10 @@ public class LocalRealZooKeeperTest {
     List<String> keeperChildren = zooKeeper.getChildren("/", false);
     LOG.info("Keep children: {}", keeperChildren);
 
-    LOG.info("CVersion after creations: {}", zooKeeper.exists(root, false).getCversion());
-    LOG.info("CVersion after creations of /1: {}", zooKeeper.exists(root + "/1", false).getCversion());
-    zooKeeper.delete(root + "/1", 0);
-    LOG.info("CVersion after deletion too: {}", zooKeeper.exists(root, false).getCversion());
+//    LOG.info("CVersion after creations: {}", zooKeeper.exists(root, false).getCversion());
+//    LOG.info("CVersion after creations of /1: {}", zooKeeper.exists(root + "/1", false).getCversion());
+//    zooKeeper.delete(root + "/1", 0);
+//    LOG.info("CVersion after deletion too: {}", zooKeeper.exists(root, false).getCversion());
 
     //    Stat exists = zooKeeper.exists("/start0000000001", false);
 //    System.out.println("Exists: " + exists);

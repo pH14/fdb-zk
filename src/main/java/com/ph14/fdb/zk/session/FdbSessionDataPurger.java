@@ -17,29 +17,32 @@ import com.ph14.fdb.zk.layer.changefeed.WatchEventChangefeed;
 import com.ph14.fdb.zk.layer.ephemeral.FdbEphemeralNodeManager;
 
 @Singleton
-public class FdbSessionReaper {
+public class FdbSessionDataPurger {
 
   private final Database fdb;
   private final WatchEventChangefeed watchEventChangefeed;
   private final FdbNodeWriter fdbNodeWriter;
   private final FdbNodeReader fdbNodeReader;
   private final FdbEphemeralNodeManager fdbEphemeralNodeManager;
+  private final FdbSessionManager fdbSessionManager;
 
   @Inject
-  public FdbSessionReaper(Database fdb,
-                          WatchEventChangefeed watchEventChangefeed,
-                          FdbNodeWriter fdbNodeWriter,
-                          FdbNodeReader fdbNodeReader,
-                          FdbEphemeralNodeManager fdbEphemeralNodeManager) {
+  public FdbSessionDataPurger(Database fdb,
+                              WatchEventChangefeed watchEventChangefeed,
+                              FdbNodeWriter fdbNodeWriter,
+                              FdbNodeReader fdbNodeReader,
+                              FdbEphemeralNodeManager fdbEphemeralNodeManager,
+                              FdbSessionManager fdbSessionManager) {
     this.fdb = fdb;
     this.watchEventChangefeed = watchEventChangefeed;
     this.fdbNodeWriter = fdbNodeWriter;
     this.fdbNodeReader = fdbNodeReader;
     this.fdbEphemeralNodeManager = fdbEphemeralNodeManager;
+    this.fdbSessionManager = fdbSessionManager;
   }
 
   public CompletableFuture<Void> removeAllSessionData(long sessionId) {
-    return fdb.run(tr -> {
+    return fdb.runAsync(tr -> {
       List<CompletableFuture<Void>> deletions = new ArrayList<>();
 
       deletions.add(watchEventChangefeed.clearAllWatchesForSession(tr, sessionId));
@@ -55,7 +58,7 @@ public class FdbSessionReaper {
 
       fdbEphemeralNodeManager.clearEphemeralNodesForSession(tr, sessionId);
 
-      // TODO: clean up session information once it's finished
+      deletions.add(fdbSessionManager.removeSessionAsync(tr, sessionId));
 
       return AsyncUtil.whenAll(deletions);
     });
