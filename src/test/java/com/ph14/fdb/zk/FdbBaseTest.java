@@ -63,7 +63,7 @@ public class FdbBaseTest {
     watchEventChangefeed = new WatchEventChangefeed(fdb);
     fdbWatchManager = new FdbWatchManager(watchEventChangefeed);
     fdbNodeReader = new FdbNodeReader();
-    fdbEphemeralNodeManager = new FdbEphemeralNodeManager(fdb);
+    fdbEphemeralNodeManager = new FdbEphemeralNodeManager();
 
     fdbCreateOp = new FdbCreateOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager, fdbEphemeralNodeManager);
     fdbGetDataOp = new FdbGetDataOp(fdbNodeReader, fdbWatchManager);

@@ -3,8 +3,8 @@ package com.ph14.fdb.zk.session;
 import java.io.Closeable;
 import java.time.Clock;
 import java.util.OptionalLong;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -40,11 +40,10 @@ public class CoordinatingClock implements Closeable {
   static final String PREFIX = "fdb-zk-clock";
   static final byte[] KEY_PREFIX = Tuple.from(PREFIX).pack();
 
-  // this should be configurable
-  private static final long DEFAULT_TICK_MILLIS = 1000;
+  static final long DEFAULT_TICK_MILLIS = 1000;
 
   private final Database fdb;
-  private final ExecutorService executorService;
+  private final ScheduledExecutorService executorService;
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final String clockName;
   private final byte[] clockKey;
@@ -55,8 +54,8 @@ public class CoordinatingClock implements Closeable {
   private CoordinatingClock(Database fdb, String clockName, Runnable onElection, Clock clock, OptionalLong tickMillis) {
     this.fdb = fdb;
 
-    this.executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder()
-        .setNameFormat("fdb-clock-" + clockName)
+    this.executorService = Executors.newScheduledThreadPool(1, new ThreadFactoryBuilder()
+        .setNameFormat("coordinating-clock-" + clockName)
         .setDaemon(true)
         .build());
 
@@ -78,11 +77,11 @@ public class CoordinatingClock implements Closeable {
   public CoordinatingClock start() {
     Preconditions.checkState(!isClosed.get(), "cannot start clock, already closed");
 
-    executorService.submit(() -> {
-      while (!isClosed.get()) {
+    executorService.scheduleAtFixedRate(() -> {
+      if (!isClosed.get()) {
         keepTime();
       }
-    });
+    }, 0, tickMillis, TimeUnit.MILLISECONDS);
 
     return this;
   }
