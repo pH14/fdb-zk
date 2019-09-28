@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Set;
 
-import org.apache.jute.Record;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.MultiResponse;
 import org.apache.zookeeper.MultiTransactionRecord;
@@ -24,6 +23,7 @@ import org.apache.zookeeper.proto.SetACLRequest;
 import org.apache.zookeeper.proto.SetACLResponse;
 import org.apache.zookeeper.proto.SetDataRequest;
 import org.apache.zookeeper.proto.SetDataResponse;
+import org.apache.zookeeper.proto.SetWatches;
 import org.apache.zookeeper.server.ByteBufferInputStream;
 import org.apache.zookeeper.server.Request;
 
@@ -39,6 +39,7 @@ import com.ph14.fdb.zk.ops.FdbGetChildrenOp;
 import com.ph14.fdb.zk.ops.FdbGetChildrenWithStatOp;
 import com.ph14.fdb.zk.ops.FdbGetDataOp;
 import com.ph14.fdb.zk.ops.FdbSetDataOp;
+import com.ph14.fdb.zk.ops.FdbSetWatchesOp;
 
 public class FdbZooKeeperImpl implements ZooKeeperLayer {
 
@@ -54,7 +55,8 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
               OpCode.getData,
               OpCode.getACL,
               OpCode.getChildren,
-              OpCode.getChildren2) // includes stat of node
+              OpCode.getChildren2, // includes stat of node
+              OpCode.setWatches)
       )
       .build();
 
@@ -66,6 +68,7 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
   private final FdbGetChildrenOp fdbGetChildrenOp;
   private final FdbGetChildrenWithStatOp fdbGetChildrenWithStatOp;
   private final FdbDeleteOp fdbDeleteOp;
+  private final FdbSetWatchesOp fdbSetWatchesOp;
 
   @Inject
   public FdbZooKeeperImpl(Database fdb,
@@ -75,7 +78,8 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
                           FdbSetDataOp fdbSetDataOp,
                           FdbGetChildrenOp fdbGetChildrenOp,
                           FdbGetChildrenWithStatOp fdbGetChildrenWithStatOp,
-                          FdbDeleteOp fdbDeleteOp) {
+                          FdbDeleteOp fdbDeleteOp,
+                          FdbSetWatchesOp fdbSetWatchesOp) {
     this.fdb = fdb;
     this.fdbCreateOp = fdbCreateOp;
     this.fdbExistsOp = fdbExistsOp;
@@ -84,13 +88,14 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
     this.fdbGetChildrenOp = fdbGetChildrenOp;
     this.fdbGetChildrenWithStatOp = fdbGetChildrenWithStatOp;
     this.fdbDeleteOp = fdbDeleteOp;
+    this.fdbSetWatchesOp = fdbSetWatchesOp;
   }
 
   public boolean handlesRequest(Request request) {
     return FDB_SUPPORTED_OPCODES.contains(request.type);
   }
 
-  public Result<? extends Record, KeeperException> handle(Request request) throws IOException {
+  public Result<?, KeeperException> handle(Request request) throws IOException {
     Preconditions.checkArgument(handlesRequest(request), "does not handle request: " + request);
 
     switch (request.type) {
@@ -138,6 +143,11 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
         MultiTransactionRecord multiTransactionRecord = new MultiTransactionRecord();
         ByteBufferInputStream.byteBuffer2Record(request.request, multiTransactionRecord);
         return multi(request, multiTransactionRecord);
+
+      case OpCode.setWatches:
+        SetWatches setWatches = new SetWatches();
+        ByteBufferInputStream.byteBuffer2Record(request.request, setWatches);
+        return setWatches(request, setWatches);
     }
 
     return Result.err(new KeeperException.BadArgumentsException());
@@ -186,6 +196,11 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
   @Override
   public Result<MultiResponse, KeeperException> multi(Request zkRequest, MultiTransactionRecord multiTransactionRecord) {
     throw new UnsupportedOperationException("not there yet");
+  }
+
+  @Override
+  public Result<Void, KeeperException> setWatches(Request zkRequest, SetWatches setWatches) {
+    return fdb.run(tr -> fdbSetWatchesOp.execute(zkRequest, tr, setWatches)).join();
   }
 
 }

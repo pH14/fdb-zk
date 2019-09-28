@@ -51,12 +51,19 @@ public class FdbRequestProcessor implements RequestProcessor {
   }
 
   private void sendResponse(Request request,
-                            Result<? extends Record, KeeperException> fdbResult) {
+                            Result<?, KeeperException> fdbResult) {
     Record result = null;
     int errorCode = Code.OK.intValue();
 
     if (fdbResult.isOk()) {
-      result = fdbResult.unwrapOrElseThrow();
+      Object o = fdbResult.unwrapOrElseThrow();
+
+      if (o instanceof Record) {
+        result = (Record) o;
+      }
+
+      // note: it's OK for result to be null in the case of some operations like setWatches
+
       errorCode = Code.OK.intValue();
     } else if (fdbResult.isErr()) {
       LOG.error("Error: {}", fdbResult.unwrapErrOrElseThrow());
