@@ -20,12 +20,14 @@ import com.ph14.fdb.zk.layer.FdbPath;
 import com.ph14.fdb.zk.layer.FdbWatchManager;
 import com.ph14.fdb.zk.layer.changefeed.WatchEventChangefeed;
 import com.ph14.fdb.zk.layer.ephemeral.FdbEphemeralNodeManager;
+import com.ph14.fdb.zk.ops.FdbCheckVersionOp;
 import com.ph14.fdb.zk.ops.FdbCreateOp;
 import com.ph14.fdb.zk.ops.FdbDeleteOp;
 import com.ph14.fdb.zk.ops.FdbExistsOp;
 import com.ph14.fdb.zk.ops.FdbGetChildrenOp;
 import com.ph14.fdb.zk.ops.FdbGetChildrenWithStatOp;
 import com.ph14.fdb.zk.ops.FdbGetDataOp;
+import com.ph14.fdb.zk.ops.FdbMultiOp;
 import com.ph14.fdb.zk.ops.FdbSetDataOp;
 
 public class FdbBaseTest {
@@ -48,6 +50,8 @@ public class FdbBaseTest {
   protected FdbGetChildrenOp fdbGetChildrenOp;
   protected FdbGetChildrenWithStatOp fdbGetChildrenWithStatOp;
   protected FdbDeleteOp fdbDeleteOp;
+  protected FdbCheckVersionOp fdbCheckVersionOp;
+  protected FdbMultiOp fdbMultiOp;
 
   protected Database fdb;
   protected Transaction transaction;
@@ -73,6 +77,8 @@ public class FdbBaseTest {
     fdbGetChildrenWithStatOp = new FdbGetChildrenWithStatOp(fdbNodeReader, fdbWatchManager);
     fdbGetChildrenOp = new FdbGetChildrenOp(fdbGetChildrenWithStatOp);
     fdbDeleteOp = new FdbDeleteOp(fdbNodeReader, fdbNodeWriter, fdbWatchManager, fdbEphemeralNodeManager);
+    fdbCheckVersionOp = new FdbCheckVersionOp(fdbNodeReader);
+    fdbMultiOp = new FdbMultiOp(fdb, fdbCreateOp, fdbDeleteOp, fdbSetDataOp, fdbCheckVersionOp);
 
     fdb.run(tr -> {
       DirectoryLayer.getDefault().removeIfExists(tr, Collections.singletonList(FdbPath.ROOT_PATH)).join();
