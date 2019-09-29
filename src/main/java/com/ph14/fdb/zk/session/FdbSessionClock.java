@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.apple.foundationdb.Database;
-import com.google.common.annotations.VisibleForTesting;
 
 public class FdbSessionClock implements Closeable {
 
@@ -42,8 +41,7 @@ public class FdbSessionClock implements Closeable {
     coordinatingClock.start();
   }
 
-  @VisibleForTesting
-  void runOnce() {
+  public void runOnce() {
     coordinatingClock.runOnce();
   }
 
