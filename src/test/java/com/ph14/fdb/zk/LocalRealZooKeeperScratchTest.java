@@ -16,7 +16,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LocalRealZooKeeperTest {
+public class LocalRealZooKeeperScratchTest {
 
   @Test
   public void itRunsInProcess() throws Exception {
@@ -86,6 +86,6 @@ public class LocalRealZooKeeperTest {
     standaloneServerFactory.closeAll();
   }
 
-  private static final Logger LOG = LoggerFactory.getLogger(LocalRealZooKeeperTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LocalRealZooKeeperScratchTest.class);
 
 }

@@ -30,8 +30,8 @@ public class FdbZooKeeperServer extends ZooKeeperServer {
 
   private static final Logger LOG = LoggerFactory.getLogger(FdbZooKeeperServer.class);
 
-  public FdbZooKeeperServer(File snapDir, File logDir, int tickTime) throws IOException {
-    super(snapDir, logDir, tickTime);
+  public FdbZooKeeperServer(int tickTime) throws IOException {
+    super(null, null, tickTime);
   }
 
   @Override
@@ -95,6 +95,8 @@ public class FdbZooKeeperServer extends ZooKeeperServer {
         (FdbSessionManager) sessionTracker,
         injector.getInstance(FdbSessionDataPurger.class));
 
+    // if this is the only node connecting, we want to clear ephemerals before allowing requests through
+    fdbSessionClock.runOnce();
     fdbSessionClock.run();
 
     this.firstProcessor = new FdbRequestProcessor(null, this, fdbZooKeeper);

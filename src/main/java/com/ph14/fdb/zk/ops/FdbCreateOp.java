@@ -66,7 +66,6 @@ public class FdbCreateOp implements FdbOp<CreateRequest, CreateResponse> {
 
     try {
       parentSubspace = DirectoryLayer.getDefault().open(transaction, FdbPath.toFdbParentPath(request.getPath())).join();
-      LOG.info("Request {} subspace {}", request.getPath(), parentSubspace.pack());
       parentStat = fdbNodeReader.getNodeStat(parentSubspace, transaction).join();
     } catch (CompletionException e) {
       if (e.getCause() instanceof NoSuchDirectoryException) {
