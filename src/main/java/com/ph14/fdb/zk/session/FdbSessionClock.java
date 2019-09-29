@@ -7,10 +7,15 @@ import java.util.List;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.apple.foundationdb.Database;
 import com.google.common.annotations.VisibleForTesting;
 
 public class FdbSessionClock implements Closeable {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FdbSessionClock.class);
 
   private final Clock clock;
   private final FdbSessionManager fdbSessionManager;
@@ -55,6 +60,10 @@ public class FdbSessionClock implements Closeable {
     }
 
     futures.forEach(CompletableFuture::join);
+
+    if (futures.size() > 0) {
+      LOG.info("Cleared ephemeral nodes for {} sessions", futures.size());
+    }
   }
 
 }
