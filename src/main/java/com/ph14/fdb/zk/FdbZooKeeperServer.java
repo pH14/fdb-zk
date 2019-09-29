@@ -97,7 +97,7 @@ public class FdbZooKeeperServer extends ZooKeeperServer {
 
     fdbSessionClock.run();
 
-    this.firstProcessor = new FdbRequestProcessor(sessionTracker, firstProcessor, getZKDatabase(), fdbZooKeeper);
+    this.firstProcessor = new FdbRequestProcessor(null, this, fdbZooKeeper);
   }
 
 }

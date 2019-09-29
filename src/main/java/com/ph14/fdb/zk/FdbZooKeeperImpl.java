@@ -5,6 +5,8 @@ import java.util.Arrays;
 import java.util.Set;
 
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.SessionExpiredException;
+import org.apache.zookeeper.KeeperException.SessionMovedException;
 import org.apache.zookeeper.MultiResponse;
 import org.apache.zookeeper.MultiTransactionRecord;
 import org.apache.zookeeper.ZooDefs.OpCode;
@@ -26,6 +28,7 @@ import org.apache.zookeeper.proto.SetDataResponse;
 import org.apache.zookeeper.proto.SetWatches;
 import org.apache.zookeeper.server.ByteBufferInputStream;
 import org.apache.zookeeper.server.Request;
+import org.apache.zookeeper.txn.CreateSessionTxn;
 
 import com.apple.foundationdb.Database;
 import com.google.common.base.Preconditions;
@@ -40,8 +43,14 @@ import com.ph14.fdb.zk.ops.FdbGetChildrenWithStatOp;
 import com.ph14.fdb.zk.ops.FdbGetDataOp;
 import com.ph14.fdb.zk.ops.FdbSetDataOp;
 import com.ph14.fdb.zk.ops.FdbSetWatchesOp;
+import com.ph14.fdb.zk.session.FdbSessionManager;
 
 public class FdbZooKeeperImpl implements ZooKeeperLayer {
+
+  private static final Set<Integer> OPS_WITHOUT_SESSION_CHECK = ImmutableSet.<Integer>builder()
+      .add(OpCode.createSession)
+      .add(OpCode.closeSession)
+      .build();
 
   private static final Set<Integer> FDB_SUPPORTED_OPCODES = ImmutableSet.<Integer>builder()
       .addAll(
@@ -56,7 +65,16 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
               OpCode.getACL,
               OpCode.getChildren,
               OpCode.getChildren2, // includes stat of node
-              OpCode.setWatches)
+              OpCode.setWatches,
+              // TODO:
+              // OpCode.multi,
+              // OpCode.check,
+
+              OpCode.sync,
+              OpCode.ping,
+              OpCode.createSession,
+              OpCode.closeSession
+          )
       )
       .build();
 
@@ -70,8 +88,11 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
   private final FdbDeleteOp fdbDeleteOp;
   private final FdbSetWatchesOp fdbSetWatchesOp;
 
+  private final FdbSessionManager fdbSessionManager;
+
   @Inject
   public FdbZooKeeperImpl(Database fdb,
+                          FdbSessionManager fdbSessionManager,
                           FdbCreateOp fdbCreateOp,
                           FdbExistsOp fdbExistsOp,
                           FdbGetDataOp fdbGetDataOp,
@@ -81,6 +102,7 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
                           FdbDeleteOp fdbDeleteOp,
                           FdbSetWatchesOp fdbSetWatchesOp) {
     this.fdb = fdb;
+    this.fdbSessionManager = fdbSessionManager;
     this.fdbCreateOp = fdbCreateOp;
     this.fdbExistsOp = fdbExistsOp;
     this.fdbGetDataOp = fdbGetDataOp;
@@ -97,6 +119,14 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
 
   public Result<?, KeeperException> handle(Request request) throws IOException {
     Preconditions.checkArgument(handlesRequest(request), "does not handle request: " + request);
+
+    if (!OPS_WITHOUT_SESSION_CHECK.contains(request.type)) {
+      try {
+        fdbSessionManager.checkSession(request.sessionId, null);
+      } catch (SessionExpiredException | SessionMovedException e) {
+        return Result.err(e);
+      }
+    }
 
     switch (request.type) {
       case OpCode.create:
@@ -148,6 +178,21 @@ public class FdbZooKeeperImpl implements ZooKeeperLayer {
         SetWatches setWatches = new SetWatches();
         ByteBufferInputStream.byteBuffer2Record(request.request, setWatches);
         return setWatches(request, setWatches);
+
+      case OpCode.createSession:
+        request.request.rewind();
+        int to = request.request.getInt();
+        request.txn = new CreateSessionTxn(to);
+        fdbSessionManager.addSession(request.sessionId, to);
+        return Result.ok(true);
+
+      case OpCode.closeSession:
+        fdbSessionManager.setSessionClosing(request.sessionId);
+        return Result.ok(true);
+
+      case OpCode.ping:
+      case OpCode.sync: // no-op, fdb won't return stale reads
+        return Result.ok(true);
     }
 
     return Result.err(new KeeperException.BadArgumentsException());

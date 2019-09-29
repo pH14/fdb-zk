@@ -78,8 +78,12 @@ public class CoordinatingClock implements Closeable {
     Preconditions.checkState(!isClosed.get(), "cannot start clock, already closed");
 
     executorService.scheduleAtFixedRate(() -> {
-      if (!isClosed.get()) {
-        keepTime();
+      try {
+        if (!isClosed.get()) {
+          keepTime();
+        }
+      } catch (Exception e) {
+        LOG.error("Error in coordinating clock", e);
       }
     }, 0, tickMillis, TimeUnit.MILLISECONDS);
 
