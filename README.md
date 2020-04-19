@@ -2,7 +2,14 @@
 
 `fdb-zk` is a FoundationDB layer that mimics the behavior of Zookeeper. It is installed as a local service to an application, and replaces connections to and the operation of a ZooKeeper cluster.
 
-While the core CRUD operations are implemented, `fdb-zk` is not remotely ready for production use. Outside of a general need for rigorous testing, it does not yet support the [crucial](https://github.com/pH14/fdb-zk/issues/3) [features](https://github.com/pH14/fdb-zk/issues/4) that make Zookeeper special.
+While the core operations are implemented, `fdb-zk` has not been vetted for proper production use.
+
+### Talk & Slides
+
+Learn about how the layer works in greater detail:
+
+* [In video format](https://www.youtube.com/watch?v=3FYpf1QMPgQ)
+* [In slidedeck format](https://static.sched.com/hosted_files/foundationdbsummit2019/86/zookeeper_layer.pdf)
 
 #### Architecture
 
@@ -45,13 +52,19 @@ Applications can continue to use their preferred `Zookeeper` clients:
 * `getData`
 * `setData`
 * `getChildren`
+* watches
+* session management
 
-TODO:
-- [ ] `multi`
-- [ ] `getACL`
-- [ ] `setACL`
+It partially implements:
 
-### Further Discussion
+* `multi` transactions (reads are fine, but there are no read-your-writes)
+
+It does not yet implement:
+
+* `getACL/setACL`
+* quotas
+
+### Initial Design Discussion
 
 https://forums.foundationdb.org/t/fdb-zk-rough-cut-of-zookeeper-api-layer/1278/
 
